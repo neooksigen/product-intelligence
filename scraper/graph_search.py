@@ -4,6 +4,7 @@ load_dotenv()
 
 from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="gpt-5.2", temperature=0) 
+llm_alt = ChatOpenAI(model="gpt-5-mini") #11 march 2026: for summarization and parsing
 
 import datetime
 datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -124,7 +125,7 @@ def search_answer_tavily_summarise(state: SearchState):
         if len(content.split()) > 10: #split to split sentence into words, then count how many words
             prompt = summarise_instructions.format(question=state['question'], content=content)
             #summary = llm.invoke(prompt).content.strip() #to make it raw text without any structure
-            response = llm.with_structured_output(SearchAnswersTavily).invoke(prompt)
+            response = llm_alt.with_structured_output(SearchAnswersTavily).invoke(prompt) #edited 11 mar 2026 to use llm_alt for cheaper cost
             summarized_answer = response.answer[0]
             source_date = response.source_published_date[0]
         else: 
@@ -140,9 +141,10 @@ def search_answer_tavily_summarise(state: SearchState):
            "source_published_date_tavily": source_dates}
 
 def search_answer_combined(state: SearchState):
-    return {"answer": state['answer_gpt']+state['answer_tavily'],
-           "url": state['url_gpt']+state['url_tavily'],
-           "source_date": state['source_published_date_gpt']+state['source_published_date_tavily']}
+    return {"answer": state['answer_gpt'], #+state['answer_tavily'], #11 mar 2026 due to not good result, tavily is set off.
+           "url": state['url_gpt'], #+state['url_tavily'],
+           "source_date": state['source_published_date_gpt'] #+state['source_published_date_tavily']
+           }
 
 from scraper.utils import safe_extract_item 
 
@@ -189,7 +191,7 @@ def search_answer_parsed(state: SearchState):
 
     for answer_detail in state['answer']:
         prompt = search_answer_parsed_instructions.format(answer_detail=answer_detail)
-        response = llm.with_structured_output(SearchAnswersParsed).invoke(prompt)
+        response = llm_alt.with_structured_output(SearchAnswersParsed).invoke(prompt) #edited 11 mar 2026 to use cheaper model
         product_name_list.append(safe_extract_item(response.product_name))
         price_list.append(safe_extract_item(response.price))
         quantity_list.append(safe_extract_item(response.quantity))
@@ -277,16 +279,17 @@ def insert_to_table(state: SearchState):
 from langgraph.graph import END, StateGraph, START
 
 graph_search = StateGraph(SearchState)
-graph_search.add_node("search_answer_tavily", search_answer_tavily)
+#graph_search.add_node("search_answer_tavily", search_answer_tavily)
 graph_search.add_node("search_answer_gpt", search_answer_gpt)
-graph_search.add_node("search_answer_tavily_summarise", search_answer_tavily_summarise) 
+#graph_search.add_node("search_answer_tavily_summarise", search_answer_tavily_summarise) 
 graph_search.add_node("search_answer_combined", search_answer_combined)
 graph_search.add_node("search_answer_parsed", search_answer_parsed)
 graph_search.add_node("insert_to_table", insert_to_table)
-graph_search.add_edge(START, "search_answer_tavily")
+#graph_search.add_edge(START, "search_answer_tavily")
 graph_search.add_edge(START, "search_answer_gpt")
-graph_search.add_edge("search_answer_tavily", "search_answer_tavily_summarise")
-graph_search.add_edge(["search_answer_tavily_summarise", "search_answer_gpt"], "search_answer_combined")
+#graph_search.add_edge("search_answer_tavily", "search_answer_tavily_summarise")
+#graph_search.add_edge(["search_answer_tavily_summarise", "search_answer_gpt"], "search_answer_combined")
+graph_search.add_edge("search_answer_gpt","search_answer_combined")
 graph_search.add_edge("search_answer_combined", "search_answer_parsed")
 graph_search.add_edge("search_answer_parsed", "insert_to_table")
 graph_search.add_edge("insert_to_table", END)
