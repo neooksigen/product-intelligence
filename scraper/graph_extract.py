@@ -17,6 +17,7 @@ from scraper.utils import safe_extract_item, normalize_url
 
 from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="gpt-5.2", temperature=0) 
+llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0) #11 march 2026: for summarization and parsing
 
 import datetime
 end_date = datetime.datetime.now().date().strftime('%Y-%m-%d')
@@ -163,7 +164,7 @@ def tavily_parse(state: ExtractState):
     for item in product_lines:
         product_details = item['content'].strip().upper()
         prompt = parse_instructions.format(product_detail=product_details)
-        response = llm.with_structured_output(ParseResults).invoke(prompt)
+        response = llm_alt.with_structured_output(ParseResults).invoke(prompt)
         a = safe_extract_item(response.product_name)
         b = safe_extract_item(response.quantity)
         c = safe_extract_item(response.measurement_scale)
