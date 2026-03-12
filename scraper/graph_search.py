@@ -4,7 +4,7 @@ load_dotenv()
 
 from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="gpt-5.2", temperature=0) 
-llm_alt = ChatOpenAI(model="gpt-5-mini") #11 march 2026: for summarization and parsing
+llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0) #11 march 2026: for summarization and parsing
 
 import datetime
 datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -295,3 +295,4 @@ graph_search.add_edge("search_answer_parsed", "insert_to_table")
 graph_search.add_edge("insert_to_table", END)
 
 app_search = graph_search.compile()    
+
