@@ -248,7 +248,7 @@ def run_scheduler():
             if stage == "SEARCH" :
 
                 gate_search_queries = check_condition_search_queries()
-                if gate_search_queries['all_rows_number'] != gate_search_queries['rows_with_latest_loop_order_number'] : 
+                if (gate_search_queries['all_rows_number'] != gate_search_queries['rows_with_latest_loop_order_number']) or (gate_search_queries['latest_loop_order_number'] == 0) : 
 
                     search_task = get_next_search_task(session)
                     run_search_task(session, search_task) 
@@ -264,7 +264,7 @@ def run_scheduler():
             elif stage == "EXTRACT" :
 
                 gate_extract_urls = check_condition_extract_urls() 
-                if gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number'] :  
+                if (gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number']) or (gate_extract_urls['latest_loop_order_number'] == 0) : 
 
                     extract_task = get_next_extract_task(session) 
                     run_extract_task(session, extract_task)
@@ -277,10 +277,10 @@ def run_scheduler():
             # -------------------------------------
             # GSC STAGE 
             # -------------------------------------
-            elif stage = "GSC" : 
+            elif stage == "GSC" : 
 
                 gate_gs_queries = check_condition_gs_queries()
-                if gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number'] : 
+                if (gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number']) or (gate_gs_queries['latest_loop_order_number'] == 0) : 
 
                     gsc_task = get_next_gsc_task(session) 
                     run_gsc_task(session, gsc_task) 
