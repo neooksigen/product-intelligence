@@ -80,7 +80,6 @@ Example:
 Bawang Merah https://ubifresh.id/bawang-merah/19029232 Rp 18,000 img11230099-8989-766788 250 Gram
 
 Then extract the product name and price, and put into this format :
-(order sequence of the product for example z1., z2., z3., etc...) product name - price 
 (order sequence of the product for example z1., z2., z3., etc...) product name quantity - price
 Example:
 z1. SHARON CREAM MESSES 40GR - Rp 4.000 (You must put z1. into the first product you find ! That is imperative !)
@@ -95,7 +94,7 @@ def tavily_clean_remains(state: ExtractState):
     clean_text_step_02 = []
     for content in state['clean_text_step_01']:
         prompt = clean_instructions.format(text=content)
-        ct = llm.invoke(prompt).content #the content will be raw text, because the prompt doesn't instruct to format as JSON list
+        ct = llm_alt.invoke(prompt).content #the content will be raw text, because the prompt doesn't instruct to format as JSON list #14 mar 2026: use llm_alt for cheaper cost
         clean_text_step_02.append(ct)
     return {"clean_text_step_02": clean_text_step_02}
 
