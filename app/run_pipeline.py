@@ -178,16 +178,16 @@ def run_search_task(session: Session, task: SearchQueries):
         pass  # your graph handles DB insert internally
 
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    all_rows_number = check_condition_search_queries()['all_rows_number']
-    latest_loop_order_number = check_condition_search_queries()['latest_loop_order_number']    
-    rows_with_latest_loop_order_number = check_condition_search_queries()['rows_with_latest_loop_order_number']
-    if all_rows_number == rows_with_latest_loop_order_number : 
-        task.loop_order = task.loop_order + 1
-    else : 
-        task.loop_order = latest_loop_order_number
+    #all_rows_number = check_condition_search_queries()['all_rows_number']
+    #latest_loop_order_number = check_condition_search_queries()['latest_loop_order_number']    
+    #rows_with_latest_loop_order_number = check_condition_search_queries()['rows_with_latest_loop_order_number']
+    #if all_rows_number == rows_with_latest_loop_order_number : 
+    task.loop_order = task.loop_order + 1
+    #else : 
+    #    task.loop_order = latest_loop_order_number
 
     session.commit()
-
+    print(">>> Update table search_queries Successful !")
     logger.info("Search task completed.")
 
 def run_extract_task(session: Session, task: ExtractUrls):
@@ -199,32 +199,33 @@ def run_extract_task(session: Session, task: ExtractUrls):
         logger.error(f"Extraction failed for {task.url}: {e}")        
 
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    check_result = check_condition_extract_urls()
-    all_rows_number =  check_result['all_rows_number']
-    latest_loop_order_number = check_result['latest_loop_order_number']    
-    rows_with_latest_loop_order_number = check_result['rows_with_latest_loop_order_number']
-    if all_rows_number == rows_with_latest_loop_order_number : 
-        task.loop_order = task.loop_order + 1
-    else : 
-        task.loop_order = latest_loop_order_number  
+    #check_result = check_condition_extract_urls()
+    #all_rows_number =  check_result['all_rows_number']
+    #latest_loop_order_number = check_result['latest_loop_order_number']    
+    #rows_with_latest_loop_order_number = check_result['rows_with_latest_loop_order_number']
+    #if all_rows_number == rows_with_latest_loop_order_number : 
+    task.loop_order = task.loop_order + 1
+    #else : 
+    #    task.loop_order = latest_loop_order_number  
   
-    #session.commit()
+    session.commit()
+    print(">>> Update table extract_urls Successful !")
 
 # safe commit 15 mar 2026 to mitigate DB connection drop
-    from sqlalchemy.exc import OperationalError
-    import time
+    #from sqlalchemy.exc import OperationalError
+    #import time
 
     #for attempt in range(2):
-    try:
-        session.commit()
-        print(">>> Update table extract_urls Successful !")
+    #try:
+    #    session.commit()
+    #    print(">>> Update table extract_urls Successful !")
         #break
     #except OperationalError as e:
-    except Exception as e:
+    #except Exception as e:
         #logger.error(f"Commit retry {attempt+1}: {e}")
-        session.rollback()
-        print("Error:",e)
-        time.sleep(5)
+    #    session.rollback()
+    #    print("Error:",e)
+    #    time.sleep(5)
 
     logger.info("Extract task completed.")
 
@@ -235,16 +236,16 @@ def run_gsc_task(session: Session, task: GsQueries):
         pass
     
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    all_rows_number = check_condition_gs_queries()['all_rows_number']
-    latest_loop_order_number = check_condition_gs_queries()['latest_loop_order_number']    
-    rows_with_latest_loop_order_number = check_condition_gs_queries()['rows_with_latest_loop_order_number']
-    if all_rows_number == rows_with_latest_loop_order_number : 
-        task.loop_order = task.loop_order + 1
-    else : 
-        task.loop_order = latest_loop_order_number  
+    #all_rows_number = check_condition_gs_queries()['all_rows_number']
+    #latest_loop_order_number = check_condition_gs_queries()['latest_loop_order_number']    
+    #rows_with_latest_loop_order_number = check_condition_gs_queries()['rows_with_latest_loop_order_number']
+    #if all_rows_number == rows_with_latest_loop_order_number : 
+    task.loop_order = task.loop_order + 1
+    #else : 
+    #    task.loop_order = latest_loop_order_number  
     
     session.commit()
-
+    print(">>> Update table gs_queries Successful !")
     logger.info("GSC task completed.")
 
 # --------------------------------------------------
