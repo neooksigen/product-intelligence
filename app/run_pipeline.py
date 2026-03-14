@@ -199,15 +199,30 @@ def run_extract_task(session: Session, task: ExtractUrls):
         logger.error(f"Extraction failed for {task.url}: {e}")        
 
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    all_rows_number = check_condition_extract_urls()['all_rows_number']
-    latest_loop_order_number = check_condition_extract_urls()['latest_loop_order_number']    
-    rows_with_latest_loop_order_number = check_condition_extract_urls()['rows_with_latest_loop_order_number']
+    check_result = check_condition_extract_urls()
+    all_rows_number =  check_result['all_rows_number']
+    latest_loop_order_number = check_result['latest_loop_order_number']    
+    rows_with_latest_loop_order_number = check_result['rows_with_latest_loop_order_number']
     if all_rows_number == rows_with_latest_loop_order_number : 
         task.loop_order = task.loop_order + 1
     else : 
         task.loop_order = latest_loop_order_number  
   
-    session.commit()
+    #session.commit()
+
+# safe commit 15 mar 2026 to mitigate DB connection drop
+    from sqlalchemy.exc import OperationalError
+    import time
+
+    for attempt in range(2):
+        try:
+            session.commit()
+            print(">>> Commit Successful !")
+            break
+        except OperationalError as e:
+            logger.error(f"Commit retry {attempt+1}: {e}")
+            session.rollback()
+            time.sleep(5)
 
     logger.info("Extract task completed.")
 
