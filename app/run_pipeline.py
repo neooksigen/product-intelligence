@@ -214,15 +214,17 @@ def run_extract_task(session: Session, task: ExtractUrls):
     from sqlalchemy.exc import OperationalError
     import time
 
-    for attempt in range(2):
-        try:
-            session.commit()
-            print(">>> Commit Successful !")
-            break
-        except OperationalError as e:
-            logger.error(f"Commit retry {attempt+1}: {e}")
-            session.rollback()
-            time.sleep(5)
+    #for attempt in range(2):
+    try:
+        session.commit()
+        print(">>> Update table extract_urls Successful !")
+        #break
+    #except OperationalError as e:
+    except Exception as e:
+        #logger.error(f"Commit retry {attempt+1}: {e}")
+        session.rollback()
+        print("Error:",e)
+        time.sleep(5)
 
     logger.info("Extract task completed.")
 
