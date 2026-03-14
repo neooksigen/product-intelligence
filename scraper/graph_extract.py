@@ -263,7 +263,7 @@ def insert_to_table(state: ExtractState):
     finally:
         db.close()
 
-    return state
+    #return state #14 March 2026: to reduce cost by not generating output token
 
 from langgraph.graph import END, StateGraph, START
 
