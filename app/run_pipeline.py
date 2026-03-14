@@ -2,7 +2,7 @@ import time
 import logging
 import datetime
 
-from sqlalchemy import select, asc
+from sqlalchemy import select, asc, func
 from sqlalchemy.orm import Session
 
 from app.database_sqlalchemy import engine
