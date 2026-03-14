@@ -193,7 +193,7 @@ def run_search_task(session: Session, task: SearchQueries):
 def run_extract_task(session: Session, task: ExtractUrls):
     logger.info(f"Running EXTRACT task: {task.url}")
 
-    for _ in app_extract.stream({"urls": task.url}):
+    for _ in app_extract.stream({"urls": [task.url]}): #14 mar 2026: add into list since graph_extract expect to receive url in list.
         pass
 
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
