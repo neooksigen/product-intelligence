@@ -23,7 +23,7 @@ DATABASESQLALCHEMY_URL = os.getenv("DATABASESQLALCHEMY_URL")
 # engine = create_engine(DATABASESQLALCHEMY_URL)
 # If using Transaction Pooler or Session Pooler, we want to ensure we disable SQLAlchemy client side pooling -
 # https://docs.sqlalchemy.org/en/20/core/pooling.html#switching-pool-implementations
-engine = create_engine(DATABASESQLALCHEMY_URL, poolclass=NullPool)
+engine = create_engine(DATABASESQLALCHEMY_URL, poolclass=NullPool,  pool_pre_ping=True, pool_recycle=120) #15 mar 2026 pool_pre_ping to ensure test the connection before using it, pool_recycle to refresh connection every 2 minutes
 
 # Create session factory
 SessionLocal = sessionmaker(
