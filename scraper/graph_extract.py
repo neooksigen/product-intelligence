@@ -42,17 +42,28 @@ from tavily import TavilyClient
 
 client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
+import time 
+
 def extract_tavily_v2(state: ExtractState):
-    contents, sources = [], []
-    for url in state['urls']:
-        url = url.strip() 
-        url = normalize_url(url)
-        data = client.extract(urls=url, extract_depth='advanced')
-        results = data["results"]
-        content = [item['raw_content'] for item in results]
-        source = [item['url'] for item in results]
-        contents.append(content[0] if content else 'Failed')
-        sources.append(source[0] if source else 'Failed to extract content on this {url} !'.format(url=url))
+    MAX_RETRY = 3
+    for attempt in range(MAX_RETRY):
+        try:
+            contents, sources = [], []
+            for url in state['urls']:
+                url = url.strip() 
+                url = normalize_url(url)
+                data = client.extract(urls=url, extract_depth='advanced', timeout=60) #14 mar 2026: allow waiting 60 seconds to extract URL.
+                results = data["results"]
+                content = [item['raw_content'] for item in results]
+                source = [item['url'] for item in results]
+                contents.append(content[0] if content else 'Failed')
+                sources.append(source[0] if source else 'Failed to extract content on this {url} !'.format(url=url))
+            break 
+        except Exception as e:
+            if attempt == MAX_RETRY - 1:
+                raise 
+            time.sleep(10)
+
     return {"content": contents, 
             "url": sources}   
 
