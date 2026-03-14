@@ -30,6 +30,7 @@ class SearchQueries(Base):
     search_query_text: Mapped[str] = mapped_column(Text)
     active_status: Mapped[bool] = mapped_column(Boolean)
     last_run_at: Mapped[str] = mapped_column(Text)
+    loop_order: Mapped[int] = mapped_column(Integer)
 
 class ExtractUrls(Base):
     __tablename__ = "extract_urls" 
@@ -38,7 +39,8 @@ class ExtractUrls(Base):
     country: Mapped[str] = mapped_column(Text)
     url: Mapped[str] = mapped_column(Text)
     active_status: Mapped[bool] = mapped_column(Boolean)
-    last_run_at: Mapped[str] = mapped_column(Text)    
+    last_run_at: Mapped[str] = mapped_column(Text)
+    loop_order: Mapped[int] = mapped_column(Integer)    
 
 class GsQueries(Base):
     __tablename__ = "gs_queries"
@@ -47,4 +49,5 @@ class GsQueries(Base):
     country: Mapped[str] = mapped_column(Text)
     gs_query: Mapped[str] = mapped_column(Text)
     active_status: Mapped[bool] = mapped_column(Boolean)
-    last_run_at: Mapped[str] = mapped_column(Text)    
+    last_run_at: Mapped[str] = mapped_column(Text)
+    loop_order: Mapped[int] = mapped_column(Integer)        
