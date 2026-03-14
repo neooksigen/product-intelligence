@@ -20,6 +20,116 @@ INTERVAL_SECONDS = 40 * 60  # 40 minutes
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# -----------New 14 March 2026----------------------
+# CHECK CONDITION
+# --------------------------------------------------
+
+#use session_s (do not use session) so the engine will not be confused. This CHECK CONDITION is just checking current loop order in table, not committing data.
+def check_condition_search_queries():
+
+    with Session(engine) as session_s:
+
+        all_rows = (
+            select(func.count())
+            .select_from(SearchQueries)
+            .where(SearchQueries.active_status == True)
+        )
+        all_rows_number = session_s.execute(all_rows).scalar()
+
+        latest_loop_order = (
+            select(func.max(SearchQueries.loop_order))
+            .select_from(SearchQueries)
+            .where(SearchQueries.active_status == True)
+        )
+        latest_loop_order_number = session_s.execute(latest_loop_order).scalar()
+
+        rows_with_latest_loop_order = (
+            select(func.count())
+            .select_from(SearchQueries)
+            .where(
+                SearchQueries.active_status == True,
+                SearchQueries.loop_order == latest_loop_order_number
+            )
+        )
+        rows_with_latest_loop_order_number = session_s.execute(rows_with_latest_loop_order).scalar()
+        
+        check_condition = (all_rows_number == rows_with_latest_loop_order_number)
+
+        return {"all_rows_number": all_rows_number, 
+        "latest_loop_order_number": latest_loop_order_number,
+        "rows_with_latest_loop_order_number": rows_with_latest_loop_order_number,
+        "check_condition": check_condition}
+
+def check_condition_extract_urls():
+
+    with Session(engine) as session_s:
+
+        all_rows = (
+            select(func.count())
+            .select_from(ExtractUrls)
+            .where(ExtractUrls.active_status == True)
+        )
+        all_rows_number = session_s.execute(all_rows).scalar()
+
+        latest_loop_order = (
+            select(func.max(ExtractUrls.loop_order))
+            .select_from(ExtractUrls)
+            .where(ExtractUrls.active_status == True)
+        )
+        latest_loop_order_number = session_s.execute(latest_loop_order).scalar()
+
+        rows_with_latest_loop_order = (
+            select(func.count())
+            .select_from(ExtractUrls)
+            .where(
+                ExtractUrls.active_status == True,
+                ExtractUrls.loop_order == latest_loop_order_number
+            )
+        )
+        rows_with_latest_loop_order_number = session_s.execute(rows_with_latest_loop_order).scalar()
+        
+        check_condition = (all_rows_number == rows_with_latest_loop_order_number)
+
+        return {"all_rows_number": all_rows_number, 
+        "latest_loop_order_number": latest_loop_order_number,
+        "rows_with_latest_loop_order_number": rows_with_latest_loop_order_number,
+        "check_condition": check_condition}
+
+def check_condition_gs_queries():
+
+    with Session(engine) as session_s:
+
+        all_rows = (
+            select(func.count())
+            .select_from(GsQueries)
+            .where(GsQueries.active_status == True)
+        )
+        all_rows_number = session_s.execute(all_rows).scalar()
+
+        latest_loop_order = (
+            select(func.max(GsQueries.loop_order))
+            .select_from(GsQueries)
+            .where(GsQueries.active_status == True)
+        )
+        latest_loop_order_number = session_s.execute(latest_loop_order).scalar()
+
+        rows_with_latest_loop_order = (
+            select(func.count())
+            .select_from(GsQueries)
+            .where(
+                GsQueries.active_status == True,
+                GsQueries.loop_order == latest_loop_order_number
+            )
+        )
+        rows_with_latest_loop_order_number = session_s.execute(rows_with_latest_loop_order).scalar()
+        
+        check_condition = (all_rows_number == rows_with_latest_loop_order_number)
+
+        return {"all_rows_number": all_rows_number, 
+        "latest_loop_order_number": latest_loop_order_number,
+        "rows_with_latest_loop_order_number": rows_with_latest_loop_order_number,
+        "check_condition": check_condition}
+
 # --------------------------------------------------
 # TASK FETCHERS
 # --------------------------------------------------
@@ -68,6 +178,14 @@ def run_search_task(session: Session, task: SearchQueries):
         pass  # your graph handles DB insert internally
 
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+    all_rows_number = check_condition_search_queries()['all_rows_number']
+    latest_loop_order_number = check_condition_search_queries()['latest_loop_order_number']    
+    rows_with_latest_loop_order_number = check_condition_search_queries()['rows_with_latest_loop_order_number']
+    if all_rows_number == rows_with_latest_loop_order_number : 
+        task.loop_order = task.loop_order + 1
+    else : 
+        task.loop_order = latest_loop_order_number
+
     session.commit()
 
     logger.info("Search task completed.")
@@ -79,6 +197,14 @@ def run_extract_task(session: Session, task: ExtractUrls):
         pass
 
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+    all_rows_number = check_condition_extract_urls()['all_rows_number']
+    latest_loop_order_number = check_condition_extract_urls()['latest_loop_order_number']    
+    rows_with_latest_loop_order_number = check_condition_extract_urls()['rows_with_latest_loop_order_number']
+    if all_rows_number == rows_with_latest_loop_order_number : 
+        task.loop_order = task.loop_order + 1
+    else : 
+        task.loop_order = latest_loop_order_number  
+  
     session.commit()
 
     logger.info("Extract task completed.")
@@ -90,6 +216,14 @@ def run_gsc_task(session: Session, task: GsQueries):
         pass
     
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+    all_rows_number = check_condition_gs_queries()['all_rows_number']
+    latest_loop_order_number = check_condition_gs_queries()['latest_loop_order_number']    
+    rows_with_latest_loop_order_number = check_condition_gs_queries()['rows_with_latest_loop_order_number']
+    if all_rows_number == rows_with_latest_loop_order_number : 
+        task.loop_order = task.loop_order + 1
+    else : 
+        task.loop_order = latest_loop_order_number  
+    
     session.commit()
 
     logger.info("GSC task completed.")
@@ -99,33 +233,62 @@ def run_gsc_task(session: Session, task: GsQueries):
 # --------------------------------------------------
 
 def run_scheduler():
+
     logger.info("Pipeline scheduler started...")
 
+    stage = "SEARCH"
+
     while True:
+
         with Session(engine) as session:
 
-            # 1️⃣ Try SEARCH first
-            search_task = get_next_search_task(session)
+            # --------------------------------------
+            # SEARCH STAGE
+            # --------------------------------------
+            if stage == "SEARCH" :
 
-            if search_task:
-                run_search_task(session, search_task)
+                gate_search_queries = check_condition_search_queries()
+                if gate_search_queries['all_rows_number'] != gate_search_queries['rows_with_latest_loop_order_number'] : 
 
-            else:
-                # 2️⃣ If no search task found → run EXTRACT
-                extract_task = get_next_extract_task(session)
-
-                if extract_task:
-                    run_extract_task(session, extract_task)
+                    search_task = get_next_search_task(session)
+                    run_search_task(session, search_task) 
                 
-                else:
-                    # 3: If no extract task found → run GSC
-                    gsc_task = get_next_gsc_task(session)
+                else :
+                    logger.info("All SEARCH tasks completed. Moving to EXTRACT.")
+                    stage = "EXTRACT" 
+                    continue   
 
-                    if gsc_task:
-                        run_gsc_task(session, gsc_task)
-                    
-                    else:
-                        logger.info("No active tasks found.")
+            # -------------------------------------
+            # EXTRACT STAGE 
+            # -------------------------------------
+            elif stage == "EXTRACT" :
+
+                gate_extract_urls = check_condition_extract_urls() 
+                if gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number'] :  
+
+                    extract_task = get_next_extract_task(session) 
+                    run_extract_task(session, extract_task)
+
+                else : 
+                    logger.info("All EXTRACT tasks completed. Moving to GSC.") 
+                    stage = "GSC" 
+                    continue 
+
+            # -------------------------------------
+            # GSC STAGE 
+            # -------------------------------------
+            elif stage = "GSC" : 
+
+                gate_gs_queries = check_condition_gs_queries()
+                if gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number'] : 
+
+                    gsc_task = get_next_gsc_task(session) 
+                    run_gsc_task(session, gsc_task) 
+                
+                else : 
+                    logger.info("All GSC tasks completed. Restarting pipeline.")
+                    stage = "SEARCH" 
+                    continue 
 
         logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n")
         time.sleep(INTERVAL_SECONDS)
