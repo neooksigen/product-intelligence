@@ -253,7 +253,7 @@ def insert_to_table(state: ExtractState):
             db.add(new_product)
 
         db.commit()
-        print(">>> Commit Successful !")
+        print(">>> Insert data to table products is successful !") #15 mar 2026: clearer message
     
     except Exception as e:
         db.rollback()
