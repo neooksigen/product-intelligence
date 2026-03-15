@@ -315,7 +315,8 @@ def run_scheduler():
                     with Session(engine) as session_u:
                         for attempt in range(2):
                             try:
-                                update_extract_urls(session_u, extract_task)                                
+                                extract_task_u = get_next_extract_task(session_u)
+                                update_extract_urls(session_u, extract_task_u)                                
                                 print(">>> Update table extract_urls Successful !")
                                 time.sleep(2)
                                 logger.info("Extract task completed.")
