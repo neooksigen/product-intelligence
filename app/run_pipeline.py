@@ -15,7 +15,7 @@ from scraper.graph_gsc import app_gsc
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 20 * 60  # 20 minutes 15 mar 2026 changed from 40 to 20 minutes
+INTERVAL_SECONDS = 25 * 60  # 25 minutes 15 mar 2026 changed from 40 to 25 minutes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -167,6 +167,23 @@ def get_next_gsc_task(session: Session):
     )
     return session.execute(stmt).scalars().first()
 
+# ---------------------------------------------------------
+# UPDATING TABLE SEARCH_QUERIES, EXTRACT_URLS, GS_QUERIES
+# ---------------------------------------------------------
+
+def update_extract_urls(task: ExtractUrls):
+    with Session(engine) as session_u:
+
+        #task.last_run_at = datetime.datetime.now(datetime.timezone.utc)
+        task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')        
+        task.loop_order += 1
+
+        session_u.commit()
+
+        print(">>> Update table extract_urls Successful !")
+        time.sleep(5)
+        logger.info("Extract task completed.")
+
 # --------------------------------------------------
 # EXECUTORS
 # --------------------------------------------------
@@ -212,25 +229,25 @@ def run_extract_task(session: Session, task: ExtractUrls):
     #print(">>> Update table extract_urls Successful !")
 
 # safe commit 15 mar 2026 to mitigate DB connection drop
-    from sqlalchemy.exc import OperationalError
-    import time
+    #from sqlalchemy.exc import OperationalError
+    #import time
 
-    for attempt in range(2):
-        try:
-            task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-            task.loop_order = task.loop_order + 1
-            session.commit()
-            print(">>> Update table extract_urls Successful !")
-            break
-        except OperationalError as e:
-        #except Exception as e:
-            logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
-            session.rollback()
-            print("Error:",e)
-            time.sleep(5)
-            #raise #15 mar 2026: raise will throw error message and stop the program
+    #for attempt in range(2):
+    #    try:
+    #        task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+    #        task.loop_order = task.loop_order + 1
+    #        session.commit()
+    #        print(">>> Update table extract_urls Successful !")
+    #        break
+    #    except OperationalError as e:
+    #    #except Exception as e:
+    #        logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
+    #        session.rollback()
+    #        print("Error:",e)
+    #        time.sleep(5)
+    #        #raise #15 mar 2026: raise will throw error message and stop the program
 
-    logger.info("Extract task completed.")
+    #logger.info("Extract task completed.")
 
 def run_gsc_task(session: Session, task: GsQueries):
     logger.info(f"Running GSC task: {task.gs_query}")
@@ -291,6 +308,7 @@ def run_scheduler():
 
                     extract_task = get_next_extract_task(session) 
                     run_extract_task(session, extract_task)
+                    update_extract_urls(extract_task)
 
                 else : 
                     logger.info("All EXTRACT tasks completed. Moving to GSC.") 
