@@ -15,7 +15,7 @@ from scraper.graph_gsc import app_gsc
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 25 * 60  # 25 minutes 15 mar 2026 changed from 40 to 25 minutes
+INTERVAL_SECONDS = 20 * 60  # 25 minutes 15 mar 2026 changed from 40 to 20 minutes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -171,18 +171,18 @@ def get_next_gsc_task(session: Session):
 # UPDATING TABLE SEARCH_QUERIES, EXTRACT_URLS, GS_QUERIES
 # ---------------------------------------------------------
 
-def update_extract_urls(task: ExtractUrls):
-    with Session(engine) as session_u:
+def update_extract_urls(session: Session, task: ExtractUrls):
+#    with Session(engine) as session_u:
 
         #task.last_run_at = datetime.datetime.now(datetime.timezone.utc)
-        task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')        
-        task.loop_order += 1
+    task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')        
+    task.loop_order += 1
 
-        session_u.commit()
+    session.commit()
 
-        print(">>> Update table extract_urls Successful !")
-        time.sleep(5)
-        logger.info("Extract task completed.")
+    #print(">>> Update table extract_urls Successful !")
+    #time.sleep(5)
+    #logger.info("Extract task completed.")
 
 # --------------------------------------------------
 # EXECUTORS
@@ -225,9 +225,10 @@ def run_extract_task(session: Session, task: ExtractUrls):
     #else : 
     #    task.loop_order = latest_loop_order_number  
   
-    #session.commit()
+    session.commit()
     #print(">>> Update table extract_urls Successful !")
 
+# 15 mar 2026 9:01 pm: this try except works, because it just trying to update extract_urls table, not retrying whole graph_extract !
 # safe commit 15 mar 2026 to mitigate DB connection drop
     #from sqlalchemy.exc import OperationalError
     #import time
@@ -272,6 +273,9 @@ def run_gsc_task(session: Session, task: GsQueries):
 # MAIN LOOP
 # --------------------------------------------------
 
+from sqlalchemy.exc import OperationalError
+import time
+
 def run_scheduler():
 
     logger.info("Pipeline scheduler started...")
@@ -308,8 +312,20 @@ def run_scheduler():
 
                     extract_task = get_next_extract_task(session) 
                     run_extract_task(session, extract_task)
-                    update_extract_urls(extract_task)
-
+                    with Session(engine) as session_u:
+                        for attempt in range(2):
+                            try:
+                                update_extract_urls(session_u, extract_task)                                
+                                print(">>> Update table extract_urls Successful !")
+                                time.sleep(2)
+                                logger.info("Extract task completed.")
+                                break
+                            except OperationalError as e:
+                                logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
+                                session_u.rollback()
+                                print("Error:",e)
+                                time.sleep(2)                            
+             
                 else : 
                     logger.info("All EXTRACT tasks completed. Moving to GSC.") 
                     stage = "GSC" 
