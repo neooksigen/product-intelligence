@@ -15,7 +15,7 @@ from scraper.graph_gsc import app_gsc
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 40 * 60  # 40 minutes
+INTERVAL_SECONDS = 20 * 60  # 20 minutes 15 mar 2026 changed from 40 to 20 minutes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -198,34 +198,37 @@ def run_extract_task(session: Session, task: ExtractUrls):
     except Exception as e:
         logger.error(f"Extraction failed for {task.url}: {e}")        
 
-    task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+    #task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
     #check_result = check_condition_extract_urls()
     #all_rows_number =  check_result['all_rows_number']
     #latest_loop_order_number = check_result['latest_loop_order_number']    
     #rows_with_latest_loop_order_number = check_result['rows_with_latest_loop_order_number']
     #if all_rows_number == rows_with_latest_loop_order_number : 
-    task.loop_order = task.loop_order + 1
+    #task.loop_order = task.loop_order + 1
     #else : 
     #    task.loop_order = latest_loop_order_number  
   
-    session.commit()
-    print(">>> Update table extract_urls Successful !")
+    #session.commit()
+    #print(">>> Update table extract_urls Successful !")
 
 # safe commit 15 mar 2026 to mitigate DB connection drop
-    #from sqlalchemy.exc import OperationalError
-    #import time
+    from sqlalchemy.exc import OperationalError
+    import time
 
-    #for attempt in range(2):
-    #try:
-    #    session.commit()
-    #    print(">>> Update table extract_urls Successful !")
-        #break
-    #except OperationalError as e:
+    for attempt in range(2):
+    try:
+        task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+        task.loop_order = task.loop_order + 1
+        session.commit()
+        print(">>> Update table extract_urls Successful !")
+        break
+    except OperationalError as e:
     #except Exception as e:
-        #logger.error(f"Commit retry {attempt+1}: {e}")
-    #    session.rollback()
-    #    print("Error:",e)
-    #    time.sleep(5)
+        logger.error(f"Commit retry {attempt+1}: {e}")
+        session.rollback()
+        print("Error:",e)
+        time.sleep(5)
+        #raise #15 mar 2026: raise will throw error message and stop the program
 
     logger.info("Extract task completed.")
 
