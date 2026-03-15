@@ -9,7 +9,9 @@ from app.database_sqlalchemy import engine
 from app.tables import SearchQueries, ExtractUrls, GsQueries
 from scraper.graph_search import app_search
 from scraper.graph_extract import app_extract 
-from scraper.graph_gsc import app_gsc
+from scraper.graph_gsc import app_gsc 
+
+from sqlalchemy.exc import OperationalError
 
 # --------------------------------------------------
 # CONFIG
@@ -213,7 +215,8 @@ def run_extract_task(session: Session, task: ExtractUrls):
         for _ in app_extract.stream({"urls": [task.url]}): #14 mar 2026: add into list since graph_extract expect to receive url in list.
             pass 
     except Exception as e:
-        logger.error(f"Extraction failed for {task.url}: {e}")        
+        logger.error(f"Extraction failed for {task.url}: {e}")
+        pass        
 
     #task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
     #check_result = check_condition_extract_urls()
@@ -225,7 +228,7 @@ def run_extract_task(session: Session, task: ExtractUrls):
     #else : 
     #    task.loop_order = latest_loop_order_number  
   
-    session.commit()
+    #session.commit()
     #print(">>> Update table extract_urls Successful !")
 
 # 15 mar 2026 9:01 pm: this try except works, because it just trying to update extract_urls table, not retrying whole graph_extract !
@@ -234,17 +237,18 @@ def run_extract_task(session: Session, task: ExtractUrls):
     #import time
 
     #for attempt in range(2):
-    #    try:
+    try:
     #        task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
     #        task.loop_order = task.loop_order + 1
-    #        session.commit()
+        session.commit()
     #        print(">>> Update table extract_urls Successful !")
-    #        break
-    #    except OperationalError as e:
+    #    break
+    except OperationalError as e:
     #    #except Exception as e:
     #        logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
     #        session.rollback()
-    #        print("Error:",e)
+        print("Error:",e)
+        pass
     #        time.sleep(5)
     #        #raise #15 mar 2026: raise will throw error message and stop the program
 
