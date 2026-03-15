@@ -216,19 +216,19 @@ def run_extract_task(session: Session, task: ExtractUrls):
     import time
 
     for attempt in range(2):
-    try:
-        task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-        task.loop_order = task.loop_order + 1
-        session.commit()
-        print(">>> Update table extract_urls Successful !")
-        break
-    except OperationalError as e:
-    #except Exception as e:
-        logger.error(f"Commit retry {attempt+1}: {e}")
-        session.rollback()
-        print("Error:",e)
-        time.sleep(5)
-        #raise #15 mar 2026: raise will throw error message and stop the program
+        try:
+            task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+            task.loop_order = task.loop_order + 1
+            session.commit()
+            print(">>> Update table extract_urls Successful !")
+            break
+        except OperationalError as e:
+        #except Exception as e:
+            logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
+            session.rollback()
+            print("Error:",e)
+            time.sleep(5)
+            #raise #15 mar 2026: raise will throw error message and stop the program
 
     logger.info("Extract task completed.")
 
