@@ -17,7 +17,7 @@ from sqlalchemy.exc import OperationalError
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 15 * 60  # 15 minutes 16 mar 2026 changed from 40 to 15 minutes
+INTERVAL_SECONDS = 20 * 60  # 20 minutes 16 mar 2026 changed from 40 to 20 minutes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -276,16 +276,19 @@ def run_scheduler():
                     for attempt in range(2):
                         try:
                             extract_task_u = get_next_extract_task_2nd(session_u)
-                            update_extract_urls(session_u, extract_task_u) #need sesion because updating table 16 mar 2026                                                        
+                            update_extract_urls(session_u, extract_task_u) #need sesion because updating table 16 mar 2026, session.commit inside this function                                                        
                             print(">>> Update table extract_urls Successful !")
                             time.sleep(2)
+                            print(">>> Extract task completed.") #16 march 2026: replace logger.info with print
                             logger.info("Extract task completed.")
                             break
                         except OperationalError as e:
                             logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
                             session_u.rollback()
                             print("Error:",e)
-                            time.sleep(2)                            
+                            time.sleep(2)
+                logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n") # 16 march 2026 sleeping 
+                time.sleep(INTERVAL_SECONDS)                            
              
             else : 
                 logger.info("All EXTRACT tasks completed. Moving to GSC.") 
