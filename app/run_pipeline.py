@@ -17,7 +17,7 @@ from sqlalchemy.exc import OperationalError
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 15 * 60  # 15 minutes 16 mar 2026 changed from 40 to 15 minutes
+INTERVAL_SECONDS = 15 * 60  # 15 minutes 16 mar 2026 changed from 40 to 15 minutessss
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
