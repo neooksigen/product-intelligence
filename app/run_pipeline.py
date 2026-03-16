@@ -17,7 +17,7 @@ from sqlalchemy.exc import OperationalError
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 20 * 60  # 25 minutes 15 mar 2026 changed from 40 to 20 minutes
+INTERVAL_SECONDS = 15 * 60  # 15 minutes 16 mar 2026 changed from 40 to 15 minutes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -136,51 +136,54 @@ def check_condition_gs_queries():
 # TASK FETCHERS
 # --------------------------------------------------
 
-def get_next_search_task(session: Session):
-    stmt = (
-        select(SearchQueries)
-        .where(SearchQueries.active_status == True)
-        .order_by(
-            SearchQueries.last_run_at.asc().nullsfirst()
+def get_next_search_task():
+    with Session(engine) as session_g:
+        stmt = (
+            select(SearchQueries)
+            .where(SearchQueries.active_status == True)
+            .order_by(
+                SearchQueries.last_run_at.asc().nullsfirst()
+            )
+            .limit(1)
         )
-        .limit(1)
-    )
-    return session.execute(stmt).scalars().first()
+        return session_g.execute(stmt).scalars().first()
 
-def get_next_extract_task(session: Session):
-    stmt = (
-        select(ExtractUrls)
-        .where(ExtractUrls.active_status == True)
-        .order_by(
-            ExtractUrls.last_run_at.asc().nullsfirst()
+def get_next_extract_task(): #16 mar 2026 : remove session argument
+    with Session(engine) as session_g:        
+        stmt = (
+            select(ExtractUrls)
+            .where(ExtractUrls.active_status == True)
+            .order_by(
+                ExtractUrls.last_run_at.asc().nullsfirst()
+            )
+            .limit(1)
         )
-        .limit(1)
-    )
-    return session.execute(stmt).scalars().first()
+        return session_g.execute(stmt).scalars().first()
 
-def get_next_gsc_task(session: Session):
-    stmt = (
-        select(GsQueries)
-        .where(GsQueries.active_status == True)
-        .order_by(
-            GsQueries.last_run_at.asc().nullsfirst()
+def get_next_gsc_task():
+    with Session(engine) as session_g:
+        stmt = (
+            select(GsQueries)
+            .where(GsQueries.active_status == True)
+            .order_by(
+                GsQueries.last_run_at.asc().nullsfirst()
+            )
+            .limit(1)
         )
-        .limit(1)
-    )
-    return session.execute(stmt).scalars().first()
+        return session_g.execute(stmt).scalars().first()
 
 # ---------------------------------------------------------
 # UPDATING TABLE SEARCH_QUERIES, EXTRACT_URLS, GS_QUERIES
 # ---------------------------------------------------------
 
-def update_extract_urls(session: Session, task: ExtractUrls):
+def update_extract_urls(session: Session, task: ExtractUrls): #16 mar 2026 remove argument session
 #    with Session(engine) as session_u:
 
         #task.last_run_at = datetime.datetime.now(datetime.timezone.utc)
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')        
     task.loop_order += 1
 
-    session.commit()
+    #session.commit()
 
     #print(">>> Update table extract_urls Successful !")
     #time.sleep(5)
@@ -190,26 +193,15 @@ def update_extract_urls(session: Session, task: ExtractUrls):
 # EXECUTORS
 # --------------------------------------------------
 
-def run_search_task(session: Session, task: SearchQueries):
+def run_search_task(task: SearchQueries):
     logger.info(f"Running SEARCH task: {task.search_query_text}")
+    try:
+        for _ in app_search.stream({"question": task.search_query_text}):
+            pass  # your graph handles DB insert internally
+    except Exception as e:
+        logger.error("Search failed for {}: {}".format(task.search_query_text, e))
 
-    for _ in app_search.stream({"question": task.search_query_text}):
-        pass  # your graph handles DB insert internally
-
-    task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    #all_rows_number = check_condition_search_queries()['all_rows_number']
-    #latest_loop_order_number = check_condition_search_queries()['latest_loop_order_number']    
-    #rows_with_latest_loop_order_number = check_condition_search_queries()['rows_with_latest_loop_order_number']
-    #if all_rows_number == rows_with_latest_loop_order_number : 
-    task.loop_order = task.loop_order + 1
-    #else : 
-    #    task.loop_order = latest_loop_order_number
-
-    session.commit()
-    print(">>> Update table search_queries Successful !")
-    logger.info("Search task completed.")
-
-def run_extract_task(session: Session, task: ExtractUrls):
+def run_extract_task(task: ExtractUrls): #16 mar 2026: remove argument session because it is not used...
     logger.info(f"Running EXTRACT task: {task.url}")
     try: 
         for _ in app_extract.stream({"urls": [task.url]}): #14 mar 2026: add into list since graph_extract expect to receive url in list.
@@ -218,60 +210,13 @@ def run_extract_task(session: Session, task: ExtractUrls):
         logger.error(f"Extraction failed for {task.url}: {e}")
         pass        
 
-    #task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    #check_result = check_condition_extract_urls()
-    #all_rows_number =  check_result['all_rows_number']
-    #latest_loop_order_number = check_result['latest_loop_order_number']    
-    #rows_with_latest_loop_order_number = check_result['rows_with_latest_loop_order_number']
-    #if all_rows_number == rows_with_latest_loop_order_number : 
-    #task.loop_order = task.loop_order + 1
-    #else : 
-    #    task.loop_order = latest_loop_order_number  
-  
-    #session.commit()
-    #print(">>> Update table extract_urls Successful !")
-
-# 15 mar 2026 9:01 pm: this try except works, because it just trying to update extract_urls table, not retrying whole graph_extract !
-# safe commit 15 mar 2026 to mitigate DB connection drop
-    #from sqlalchemy.exc import OperationalError
-    #import time
-
-    #for attempt in range(2):
-    #try:
-    #        task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    #        task.loop_order = task.loop_order + 1
-    #    session.commit()
-    #        print(">>> Update table extract_urls Successful !")
-    #    break
-    #except OperationalError as e:
-    #    #except Exception as e:
-    #        logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
-    #        session.rollback()
-    #    print("Error:",e)
-    #    pass
-    #        time.sleep(5)
-    #        #raise #15 mar 2026: raise will throw error message and stop the program
-
-    #logger.info("Extract task completed.")
-
-def run_gsc_task(session: Session, task: GsQueries):
+def run_gsc_task(task: GsQueries):
     logger.info(f"Running GSC task: {task.gs_query}")
-
-    for _ in app_gsc.stream({"user_ask": task.gs_query}):
-        pass
-    
-    task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
-    #all_rows_number = check_condition_gs_queries()['all_rows_number']
-    #latest_loop_order_number = check_condition_gs_queries()['latest_loop_order_number']    
-    #rows_with_latest_loop_order_number = check_condition_gs_queries()['rows_with_latest_loop_order_number']
-    #if all_rows_number == rows_with_latest_loop_order_number : 
-    task.loop_order = task.loop_order + 1
-    #else : 
-    #    task.loop_order = latest_loop_order_number  
-    
-    session.commit()
-    print(">>> Update table gs_queries Successful !")
-    logger.info("GSC task completed.")
+    try:
+        for _ in app_gsc.stream({"user_ask": task.gs_query}):
+            pass
+    except Exception as e:
+        logger.error("GSC failed for {}: {}".format(task.gs_query, e))
 
 # --------------------------------------------------
 # MAIN LOOP
@@ -288,72 +233,73 @@ def run_scheduler():
 
     while True:
 
-        with Session(engine) as session:
+        # with Session(engine) as session: deactivated on 16 mar 2026
 
-            # --------------------------------------
-            # SEARCH STAGE
-            # --------------------------------------
-            if stage == "SEARCH" :
+        # --------------------------------------
+        # SEARCH STAGE
+        # --------------------------------------
+        if stage == "SEARCH" :
 
-                gate_search_queries = check_condition_search_queries()
-                if (gate_search_queries['all_rows_number'] != gate_search_queries['rows_with_latest_loop_order_number']) or (gate_search_queries['latest_loop_order_number'] == 0) : 
+            gate_search_queries = check_condition_search_queries()
+            if (gate_search_queries['all_rows_number'] != gate_search_queries['rows_with_latest_loop_order_number']) or (gate_search_queries['latest_loop_order_number'] == 0) : 
 
-                    search_task = get_next_search_task(session)
-                    run_search_task(session, search_task) 
+                search_task = get_next_search_task()
+                run_search_task(search_task) 
                 
-                else :
-                    logger.info("All SEARCH tasks completed. Moving to EXTRACT.")
-                    stage = "EXTRACT" 
-                    continue   
+            else :
+                logger.info("All SEARCH tasks completed. Moving to EXTRACT.")
+                stage = "EXTRACT" 
+                continue   
 
-            # -------------------------------------
-            # EXTRACT STAGE 
-            # -------------------------------------
-            elif stage == "EXTRACT" :
+        # -------------------------------------
+        # EXTRACT STAGE 
+        # -------------------------------------
+        elif stage == "EXTRACT" :
 
-                gate_extract_urls = check_condition_extract_urls() 
-                if (gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number']) or (gate_extract_urls['latest_loop_order_number'] == 0) : 
+            gate_extract_urls = check_condition_extract_urls() 
+            if (gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number']) or (gate_extract_urls['latest_loop_order_number'] == 0) : 
 
-                    extract_task = get_next_extract_task(session) 
-                    run_extract_task(session, extract_task)
-                    with Session(engine) as session_u:
-                        for attempt in range(2):
-                            try:
-                                extract_task_u = get_next_extract_task(session_u)
-                                update_extract_urls(session_u, extract_task_u)                                
-                                print(">>> Update table extract_urls Successful !")
-                                time.sleep(2)
-                                logger.info("Extract task completed.")
-                                break
-                            except OperationalError as e:
-                                logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
-                                session_u.rollback()
-                                print("Error:",e)
-                                time.sleep(2)                            
+                extract_task = get_next_extract_task() 
+                run_extract_task(extract_task) #sessionlocal was already created in last node of graph_extract long time ago 16 mar 2026
+                with Session(engine) as session_u:
+                    for attempt in range(2):
+                        try:
+                            extract_task_u = get_next_extract_task()
+                            update_extract_urls(session_u, extract_task_u) #need sesion because updating table 16 mar 2026
+                            session_u.commit()                                                          
+                            print(">>> Update table extract_urls Successful !")
+                            time.sleep(2)
+                            logger.info("Extract task completed.")
+                            break
+                        except OperationalError as e:
+                            logger.error(f"Update table extract_urls retry {attempt+1}: {e}")
+                            session_u.rollback()
+                            print("Error:",e)
+                            time.sleep(2)                            
              
-                else : 
-                    logger.info("All EXTRACT tasks completed. Moving to GSC.") 
-                    stage = "GSC" 
-                    continue 
+            else : 
+                logger.info("All EXTRACT tasks completed. Moving to GSC.") 
+                stage = "GSC" 
+                continue 
 
-            # -------------------------------------
-            # GSC STAGE 
-            # -------------------------------------
-            elif stage == "GSC" : 
+        # -------------------------------------
+        # GSC STAGE 
+        # -------------------------------------
+        elif stage == "GSC" : 
 
-                gate_gs_queries = check_condition_gs_queries()
-                if (gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number']) or (gate_gs_queries['latest_loop_order_number'] == 0) : 
+            gate_gs_queries = check_condition_gs_queries()
+            if (gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number']) or (gate_gs_queries['latest_loop_order_number'] == 0) : 
 
-                    gsc_task = get_next_gsc_task(session) 
-                    run_gsc_task(session, gsc_task) 
+                gsc_task = get_next_gsc_task() 
+                run_gsc_task(gsc_task) 
                 
-                else : 
-                    logger.info("All GSC tasks completed. Restarting pipeline.")
-                    stage = "SEARCH" 
-                    continue 
+            else : 
+                logger.info("All GSC tasks completed. Restarting pipeline.")
+                stage = "SEARCH" 
+                continue 
 
-        logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n")
-        time.sleep(INTERVAL_SECONDS)
+    logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n")
+    time.sleep(INTERVAL_SECONDS)
 
 
 # --------------------------------------------------
