@@ -183,7 +183,7 @@ def update_extract_urls(session: Session, task: ExtractUrls): #16 mar 2026 remov
     task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')        
     task.loop_order += 1
 
-    #session.commit()
+    session.commit() #16 mar 2026: session.commit() here, so the function do commit
 
     #print(">>> Update table extract_urls Successful !")
     #time.sleep(5)
@@ -265,8 +265,7 @@ def run_scheduler():
                     for attempt in range(2):
                         try:
                             extract_task_u = get_next_extract_task()
-                            update_extract_urls(session_u, extract_task_u) #need sesion because updating table 16 mar 2026
-                            session_u.commit()                                                          
+                            update_extract_urls(session_u, extract_task_u) #need sesion because updating table 16 mar 2026                                                        
                             print(">>> Update table extract_urls Successful !")
                             time.sleep(2)
                             logger.info("Extract task completed.")
