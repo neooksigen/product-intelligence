@@ -17,7 +17,7 @@ from sqlalchemy.exc import OperationalError
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 15 * 60  # 15 minutes 16 mar 2026 changed from 40 to 15 minutessss
+INTERVAL_SECONDS = 15 * 60  # 15 minutes 16 mar 2026 changed from 40 to 15 minutes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -160,6 +160,17 @@ def get_next_extract_task(): #16 mar 2026 : remove session argument
         )
         return session_g.execute(stmt).scalars().first()
 
+def get_next_extract_task_2nd(session: Session): #16 mar 2026 : 2nd time running to finally update table extract_url       
+    stmt = (
+        select(ExtractUrls)
+        .where(ExtractUrls.active_status == True)
+        .order_by(
+            ExtractUrls.last_run_at.asc().nullsfirst()
+        )
+        .limit(1)
+    )
+    return session.execute(stmt).scalars().first()
+
 def get_next_gsc_task():
     with Session(engine) as session_g:
         stmt = (
@@ -264,7 +275,7 @@ def run_scheduler():
                 with Session(engine) as session_u:
                     for attempt in range(2):
                         try:
-                            extract_task_u = get_next_extract_task()
+                            extract_task_u = get_next_extract_task_2nd(session_u)
                             update_extract_urls(session_u, extract_task_u) #need sesion because updating table 16 mar 2026                                                        
                             print(">>> Update table extract_urls Successful !")
                             time.sleep(2)
