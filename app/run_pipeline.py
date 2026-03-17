@@ -148,6 +148,17 @@ def get_next_search_task():
         )
         return session_g.execute(stmt).scalars().first()
 
+def get_next_search_task_2nd(session: Session):
+    stmt = (
+        select(SearchQueries)
+        .where(SearchQueries.active_status == True)
+        .order_by(
+            SearchQueries.last_run_at.asc().nullsfirst()
+        )
+        .limit(1)
+    )
+    return session.execute(stmt).scalars().first()
+
 def get_next_extract_task(): #16 mar 2026 : remove session argument
     with Session(engine) as session_g:        
         stmt = (
@@ -183,9 +194,27 @@ def get_next_gsc_task():
         )
         return session_g.execute(stmt).scalars().first()
 
+def get_next_gsc_task_2nd(session: Session):
+    stmt = (
+        select(GsQueries)
+        .where(GsQueries.active_status == True)
+        .order_by(
+            GsQueries.last_run_at.asc().nullsfirst()
+        )
+        .limit(1)
+    )
+    return session.execute(stmt).scalars().first()
+
 # ---------------------------------------------------------
 # UPDATING TABLE SEARCH_QUERIES, EXTRACT_URLS, GS_QUERIES
 # ---------------------------------------------------------
+
+def update_search_queries(session: Session, task: SearchQueries):
+
+    task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')        
+    task.loop_order += 1
+
+    session.commit()
 
 def update_extract_urls(session: Session, task: ExtractUrls): #16 mar 2026 remove argument session
 #    with Session(engine) as session_u:
@@ -200,6 +229,13 @@ def update_extract_urls(session: Session, task: ExtractUrls): #16 mar 2026 remov
     #time.sleep(5)
     #logger.info("Extract task completed.")
 
+def update_gs_queries(session: Session, task: GsQueries):
+
+    task.last_run_at = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')        
+    task.loop_order += 1
+
+    session.commit()
+
 # --------------------------------------------------
 # EXECUTORS
 # --------------------------------------------------
@@ -211,6 +247,7 @@ def run_search_task(task: SearchQueries):
             pass  # your graph handles DB insert internally
     except Exception as e:
         logger.error("Search failed for {}: {}".format(task.search_query_text, e))
+        pass
 
 def run_extract_task(task: ExtractUrls): #16 mar 2026: remove argument session because it is not used...
     logger.info(f"Running EXTRACT task: {task.url}")
@@ -228,6 +265,7 @@ def run_gsc_task(task: GsQueries):
             pass
     except Exception as e:
         logger.error("GSC failed for {}: {}".format(task.gs_query, e))
+        pass
 
 # --------------------------------------------------
 # MAIN LOOP
@@ -241,6 +279,7 @@ def run_scheduler():
     logger.info("Pipeline scheduler started...")
 
     stage = "SEARCH"
+    last_stage = "FIRST TIME RUN"
 
     while True:
 
@@ -252,14 +291,34 @@ def run_scheduler():
         if stage == "SEARCH" :
 
             gate_search_queries = check_condition_search_queries()
-            if (gate_search_queries['all_rows_number'] != gate_search_queries['rows_with_latest_loop_order_number']) or (gate_search_queries['latest_loop_order_number'] == 0) : 
+            if (gate_search_queries['all_rows_number'] != gate_search_queries['rows_with_latest_loop_order_number']) or (gate_search_queries['latest_loop_order_number'] == 0) or (last_stage == "GSC") : 
 
                 search_task = get_next_search_task()
                 run_search_task(search_task) 
+                with Session(engine) as session_u:
+                    for attempt in range(2):
+                        try:
+                            search_task_u = get_next_search_task_2nd(session_u)
+                            update_search_queries(session_u, search_task_u)
+                            print(">>> Update table search_queries Successful !")
+                            time.sleep(2)
+                            print(">>> Search task completed.")
+                            logger.info("Search task completed.")
+                            break
+                        except OperationalError as e:
+                            logger.error("Update table search_queries retry {}: {}".format(attempt+1, e))
+                            session_u.rollback()
+                            print("Error:",e)
+                            time.sleep(2)
+                last_stage = "SEARCH"
+                time.sleep(2)
+                logger.info("Sleeping for {} minutes...\n".format(INTERVAL_SECONDS/60))
+                time.sleep(INTERVAL_SECONDS)
                 
             else :
                 logger.info("All SEARCH tasks completed. Moving to EXTRACT.")
-                stage = "EXTRACT" 
+                stage = "EXTRACT"
+                last_stage = "SEARCH" 
                 continue   
 
         # -------------------------------------
@@ -268,7 +327,7 @@ def run_scheduler():
         elif stage == "EXTRACT" :
 
             gate_extract_urls = check_condition_extract_urls() 
-            if (gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number']) or (gate_extract_urls['latest_loop_order_number'] == 0) : 
+            if (gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number']) or (gate_extract_urls['latest_loop_order_number'] == 0) or (last_stage == "SEARCH") : 
 
                 extract_task = get_next_extract_task() 
                 run_extract_task(extract_task) #sessionlocal was already created in last node of graph_extract long time ago 16 mar 2026
@@ -287,13 +346,16 @@ def run_scheduler():
                             session_u.rollback()
                             print("Error:",e)
                             time.sleep(2)
+                last_stage = "EXTRACT"
+                time.sleep(2)
                 logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n") # 16 march 2026 sleeping 
                 time.sleep(INTERVAL_SECONDS)                            
              
             else : 
                 logger.info("All EXTRACT tasks completed. Moving to GSC.") 
                 stage = "GSC" 
-                continue 
+                last_stage = "EXTRACT"
+                continue #meaning: continue to the next elif 17 march 2026
 
         # -------------------------------------
         # GSC STAGE 
@@ -301,18 +363,39 @@ def run_scheduler():
         elif stage == "GSC" : 
 
             gate_gs_queries = check_condition_gs_queries()
-            if (gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number']) or (gate_gs_queries['latest_loop_order_number'] == 0) : 
+            if (gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number']) or (gate_gs_queries['latest_loop_order_number'] == 0) or (last_stage == "EXTRACT") : 
 
                 gsc_task = get_next_gsc_task() 
-                run_gsc_task(gsc_task) 
+                run_gsc_task(gsc_task)
+                with Session(engine) as session_u:
+                    for attempt in range(2):
+                        try:
+                            gsc_task_u = get_next_gsc_task_2nd(session_u)
+                            update_gs_queries(session_u, gsc_task_u)
+                            print(">>> Update table gs_queries Successfull !")
+                            time.sleep(2)
+                            print(">>> GSC task completed.")
+                            logger.info("GSC task completed.")
+                            break
+                        except OperationalError as e:
+                            logger.error("Update table gs_queries retry {}: {}".format(attempt+1, e))
+                            session_u.rollback()
+                            print("Error:",e)
+                            time.sleep(2)
+                last_stage = "GSC"
+                time.sleep(2)
+                logger.info("Sleeping for {} minutes...\n".format(INTERVAL_SECONDS/60))
+                time.sleep(INTERVAL_SECONDS)
                 
             else : 
                 logger.info("All GSC tasks completed. Restarting pipeline.")
                 stage = "SEARCH" 
+                last_stage = "GSC"
                 continue 
 
-    logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n")
-    time.sleep(INTERVAL_SECONDS)
+    #Deactivated 17 march 2026 because it is actually not executed inside while True
+    #logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n")
+    #time.sleep(INTERVAL_SECONDS)
 
 
 # --------------------------------------------------
