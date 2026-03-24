@@ -2,22 +2,24 @@ import time
 import logging
 import datetime
 
-from sqlalchemy import select, asc, func
+from sqlalchemy import select, asc, func, desc
 from sqlalchemy.orm import Session
 
-from app.database_sqlalchemy import engine
-from app.tables import SearchQueries, ExtractUrls, GsQueries
+from app.database_sqlalchemy import engine, SessionLocal
+from app.tables import SearchQueries, ExtractUrls, GsQueries, MoneyExchangeRate
 from scraper.graph_search import app_search
 from scraper.graph_extract import app_extract 
 from scraper.graph_gsc import app_gsc 
 
 from sqlalchemy.exc import OperationalError
 
+from scraper.utils import get_latest_exchange_rate, rates_to_dataframe, rates_to_dataframe_fin #added 23 mar 2026
+
 # --------------------------------------------------
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 20 * 60  # 20 minutes 16 mar 2026 changed from 40 to 20 minutes
+INTERVAL_SECONDS = 10 * 60  # 10 minutes 24 mar 2026 changed from 40 to 10 minutes
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -241,30 +243,30 @@ def update_gs_queries(session: Session, task: GsQueries):
 # --------------------------------------------------
 
 def run_search_task(task: SearchQueries):
-    logger.info(f"Running SEARCH task: {task.search_query_text}")
+    logger.info(f"Running SEARCH task: {task.search_query_text} country {task.country}")
     try:
-        for _ in app_search.stream({"question": task.search_query_text}):
+        for _ in app_search.stream({"question": task.search_query_text, "country": task.country}): #24 march 2026: add country
             pass  # your graph handles DB insert internally
     except Exception as e:
-        logger.error("Search failed for {}: {}".format(task.search_query_text, e))
+        logger.error("Search failed for {} {}: {}".format(task.search_query_text, task.country, e))
         pass
 
 def run_extract_task(task: ExtractUrls): #16 mar 2026: remove argument session because it is not used...
-    logger.info(f"Running EXTRACT task: {task.url}")
+    logger.info(f"Running EXTRACT task: {task.url} country {task.country}")
     try: 
-        for _ in app_extract.stream({"urls": [task.url]}): #14 mar 2026: add into list since graph_extract expect to receive url in list.
+        for _ in app_extract.stream({"urls": [task.url], "countries": [task.country]}): #14 mar 2026: add into list since graph_extract expect to receive url in list.
             pass 
     except Exception as e:
-        logger.error(f"Extraction failed for {task.url}: {e}")
+        logger.error(f"Extraction failed for {task.url} {task.country}: {e}")
         pass        
 
 def run_gsc_task(task: GsQueries):
-    logger.info(f"Running GSC task: {task.gs_query}")
+    logger.info(f"Running GSC task: {task.gs_query} country {task.country}")
     try:
-        for _ in app_gsc.stream({"user_ask": task.gs_query}):
+        for _ in app_gsc.stream({"user_ask": task.gs_query, "country": task.country}):
             pass
     except Exception as e:
-        logger.error("GSC failed for {}: {}".format(task.gs_query, e))
+        logger.error("GSC failed for {} {}: {}".format(task.gs_query, task.country, e))
         pass
 
 # --------------------------------------------------
@@ -284,6 +286,21 @@ def run_scheduler():
     while True:
 
         # with Session(engine) as session: deactivated on 16 mar 2026
+        
+        # ---------------------------------------------------------------------------------------------
+        # 23 March 2026: Check table money_exchange_rate whether there is newest exchange rates or not
+        # ---------------------------------------------------------------------------------------------
+        exchange_rate_table = get_latest_exchange_rate()
+        latest_timestamp_extract = exchange_rate_table["timestamp_extract"].max()
+        lte_datetime = datetime.datetime.strptime(latest_timestamp_extract, '%Y-%m-%d %H:%M')
+        lte_datetime = lte_datetime.replace(tzinfo=datetime.timezone.utc)
+        if lte_datetime > (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)) :
+            print("The money exchange rates is already newest !") 
+        else:
+            print("Start collect newest money exchange rates from API.")
+            rates_to_dataframe_fin()
+            print("Collection is finished !")        
+
 
         # --------------------------------------
         # SEARCH STAGE
@@ -389,6 +406,8 @@ def run_scheduler():
                 
             else : 
                 logger.info("All GSC tasks completed. Restarting pipeline.")
+                logger.info("Restarting for {} hours...\n".format(86400/3600))
+                time.sleep(86400)                
                 stage = "SEARCH" 
                 last_stage = "GSC"
                 continue 
