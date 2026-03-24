@@ -15,10 +15,14 @@ import json
 import requests
 from urllib.parse import urlencode
 
-from scraper.utils import safe_extract_item
+from scraper.utils import safe_extract_item, normalize_url, parse_price, standardize_quantity, get_latest_exchange_rate #added 24 march 2026
+
+import pandas as pd #added 24 march 2026
+import numpy as np #added 24 march 2026
 
 from langchain_openai import ChatOpenAI
-llm = ChatOpenAI(model="gpt-5.2", temperature=0) 
+llm = ChatOpenAI(model="gpt-5.2", temperature=0)
+llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0) #11 march 2026: for summarization and parsing 
 
 import datetime
 end_date = datetime.datetime.now().date().strftime('%Y-%m-%d')
@@ -26,6 +30,7 @@ start_date = (datetime.datetime.now().date() - datetime.timedelta(days=30)).strf
 
 class GoogleShoppingState(TypedDict):
     user_ask: str
+    country: str #country, added 24 mar 2026    
     s_title: Annotated[list[str], operator.add]
     s_source: Annotated[list[str], operator.add]
     s_price: Annotated[list[str], operator.add]
@@ -51,15 +56,37 @@ class GoogleShoppingState(TypedDict):
     review_count: Annotated[list[str], operator.add]
     all_method: Annotated[list[str], operator.add]
     all_timestamp_extract: Annotated[list[str], operator.add]
+    country_per_product: Annotated[list[str], operator.add] #added 23 march 2026
+    product_name_en: Annotated[list[str], operator.add] #added 20 mar 2026
+    measurement_scale_standardized: Annotated[list[str], operator.add] #added 20 mar 2026
+    quantity_standardized: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_local: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_usd: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_eur: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_chf: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_jpy: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_cny: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_aud: Annotated[list[float], operator.add] #added 20 mar 2026
+    price_sgd: Annotated[list[float], operator.add] #added 20 mar 2026                        
+    product_category: Annotated[list[str], operator.add] #added 20 mar 2026          
 
 #from app.config import settings
 
+#24 march 2026: add mapping country and gl to automatically select correct gl based on country. To be used in node s_extract & bd_extract.
+dummy_country_gl_mapping = pd.DataFrame({
+    "country": ["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
+    "Iraq","Russia","Japan","China","India","Thailand","Indonesia","Singapore","Australia","New Zealand"],
+    "gl": ["us", "br", "ar", "cl", "gb", "fr", "de", "dz", "tz", "za", "sa", 
+    "iq", "ru", "jp", "cn", "in", "th", "id", "sg", "au", "nz"]
+})
+
 def s_extract(state: GoogleShoppingState):
+    gl_selected = dummy_country_gl_mapping[dummy_country_gl_mapping["country"] == safe_extract_item(state["country"])].loc[:,"gl"].values[0]
     url = "https://google.serper.dev/shopping"
     payload = {
       "q": state['user_ask'],
-      "gl": "id",
-      "hl": "id",
+      "gl": gl_selected, #enhanced 24 mar 2026
+      #"hl": "id", #inactivate this 19 mar 2026
       "num": 40
     }
     headers = {
@@ -91,6 +118,7 @@ def s_extract(state: GoogleShoppingState):
             "s_method": s_list_method}
 
 def bd_extract(state: GoogleShoppingState):
+    gl_selected = dummy_country_gl_mapping[dummy_country_gl_mapping["country"] == safe_extract_item(state["country"])].loc[:,"gl"].values[0]    
     API_KEY = os.getenv("BRIGHTDATA_API_KEY") #need this exactly name API_KEY 9 mar 2026
     ZONE_NAME = "serp_api1" #need this exactly name ZONE_NAME 9 mar 2026
 
@@ -98,7 +126,7 @@ def bd_extract(state: GoogleShoppingState):
         "q": state['user_ask'],
         "udm": '28',    
         #"hl": "id",   # language = Indonesian
-        "gl": "id",   # country = Indonesia
+        "gl": gl_selected,   # country = Indonesia
         #"tbm": "shop" # inactivate 9 Mar 2026, there was change on Google side informed by Bright Data agent
         "brd_json": '1' # advised by Bright Data agent 9 Mar 2026
     }
@@ -170,14 +198,16 @@ def gs_next_processing(state: GoogleShoppingState):
     product_name_list = []
     quantity_list = []
     measurement_scale_list = []
-    item_list = [] 
+    item_list = []
+    country_per_product_list = [] #24 march 2026: added 
     for item in state['all_title']:
         prompt = title_processing_instructions.format(title=item)
-        response = llm.with_structured_output(TitleParseResults).invoke(prompt)
+        response = llm_alt.with_structured_output(TitleParseResults).invoke(prompt) #24 march 2026: use llm_alt for cheaper & faster result !
         product_name_list.append(safe_extract_item(response.product_name))
         quantity_list.append(safe_extract_item(response.quantity))
         measurement_scale_list.append(safe_extract_item(response.measurement_scale)) 
         item_list.append(safe_extract_item(item))
+        country_per_product_list.append(state['country']) #added 24 march 2026
 
     return {"product_name": product_name_list, 
         "quantity": quantity_list, 
@@ -188,7 +218,115 @@ def gs_next_processing(state: GoogleShoppingState):
            "review_count": state['s_ratingcount'] + state['bd_reviews_cnt'],
            "all_method": state['s_method'] + state['bd_method'], 
             "all_timestamp_extract": state['s_timestamp_extract'] + state['bd_timestamp_extract'],
-            "all_title_final": item_list}
+            "all_title_final": item_list, 
+            "country_per_product": country_per_product_list}
+
+#new 24 march 2026: translate - categorize - standardize - price conversion, similar to graph_extract
+translate_instructions = """ 
+
+You will receive {product_name} .
+
+Please help to translate this {product_name} into English version appropriately. 
+Brand name inside {product_name} should not be translated.
+
+Output into: 
+1. product_name_en: translation result
+
+Format as JSON list only.
+
+"""
+
+categorize_instructions = """
+You will receive {product_name}.
+Based on {product_name}, please help to categorize the product into well known product category. 
+Well known product category example: rice, egg, chicken meat, beef, vegetable, fruit, seasoning, crackers, drinks, sweets, soap, shampoo, kitchen cleaner, etc.
+
+Output into:
+1. product_category : product categorization result
+
+Format as JSON list only.
+
+"""
+
+class TranslateResults(BaseModel):
+    product_name_en: list[str] = Field(description= "Product name English version.") 
+
+class ProductCategoryResults(BaseModel):
+    product_category : list[str] = Field(description= "Product category determined based on product name and url. Example product category: rice, egg, chicken meat, beef, vegetable, fruit, seasoning, crackers, drinks, sweets, soap, shampoo, kitchen cleaner, etc.")
+
+
+def next_translate(state: GoogleShoppingState):
+    product_name_en_list = []
+    for item in state['product_name']:
+        prompt_a = translate_instructions.format(product_name=item) #21 mar 2026 1:26 AM -> revise this to product_name=item !!!
+        response_a = llm_alt.with_structured_output(TranslateResults).invoke(prompt_a)
+        product_name_en_list.append(safe_extract_item(response_a.product_name_en))
+
+    return {"product_name_en": product_name_en_list}
+
+def next_productcategorization(state: GoogleShoppingState):
+    product_category_list = []
+    for a in state['product_name']:
+        prompt = categorize_instructions.format(product_name=a)
+        response = llm_alt.with_structured_output(ProductCategoryResults).invoke(prompt)
+        product_category_list.append(safe_extract_item(response.product_category))
+
+    return {"product_category": product_category_list}
+
+def next_quantity_standardize(state: GoogleShoppingState):
+    results = [
+        standardize_quantity(q, u) for q, u in zip(state['quantity'], state['measurement_scale'])
+    ]
+    quantity_std = [r[0] for r in results]
+    measurement_scale_std = [r[1] for r in results]
+
+    return {"quantity_standardized": quantity_std, "measurement_scale_standardized": measurement_scale_std}
+
+def next_price_currency_conversion(state: GoogleShoppingState):
+    price_usd_list = []
+    price_eur_list = []
+    price_chf_list = []
+    price_jpy_list = []
+    price_cny_list = []
+    price_aud_list = []
+    price_sgd_list = []
+    exchange_rate_table = get_latest_exchange_rate()
+    price_local = [
+        parse_price(m) for m in state['price']
+    ]
+    dummy_country_fbc_mapping = pd.DataFrame({
+        "country":["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
+        "Iraq","Russia","Japan","China","India","Thailand","Indonesia","Singapore","Australia","New Zealand"],
+        "from_base_code":['USD','BRL','ARS', 'CLP', 'GBP', 'EUR','EUR', 'DZD', 'TZS', 'ZAR', 'SAR', 
+        'IQD', 'RUB', 'JPY', 'CNY', 'INR', 'THB', 'IDR', 'SGD', 'AUD', 'NZD']
+    })
+    for x, y in zip(price_local, state['country_per_product']):
+        fbc = dummy_country_fbc_mapping[dummy_country_fbc_mapping['country'] == safe_extract_item(y)].loc[:,"from_base_code"].values[0]
+        er_usd = exchange_rate_table[(exchange_rate_table["from_base_code"] == fbc) & (exchange_rate_table["to_currency"] == "USD")].loc[:,"exchange_rate"].values[0]
+        price_usd = er_usd * x
+        price_usd_list.append(round(float(price_usd),3)) #23 mar 2026: need to use this round & float to convert np.float64 to float 3 decimals
+        er_eur = exchange_rate_table[(exchange_rate_table["from_base_code"] == fbc) & (exchange_rate_table["to_currency"] == "EUR")].loc[:,"exchange_rate"].values[0]
+        price_eur = er_eur * x
+        price_eur_list.append(round(float(price_eur),3))
+        er_chf = exchange_rate_table[(exchange_rate_table["from_base_code"] == fbc) & (exchange_rate_table["to_currency"] == "CHF")].loc[:,"exchange_rate"].values[0]
+        price_chf = er_chf * x
+        price_chf_list.append(round(float(price_chf),3))            
+        er_jpy = exchange_rate_table[(exchange_rate_table["from_base_code"] == fbc) & (exchange_rate_table["to_currency"] == "JPY")].loc[:,"exchange_rate"].values[0]
+        price_jpy = er_jpy * x
+        price_jpy_list.append(round(float(price_jpy),3))
+        er_cny = exchange_rate_table[(exchange_rate_table["from_base_code"] == fbc) & (exchange_rate_table["to_currency"] == "CNY")].loc[:,"exchange_rate"].values[0]
+        price_cny = er_cny * x
+        price_cny_list.append(round(float(price_cny),3))  
+        er_aud = exchange_rate_table[(exchange_rate_table["from_base_code"] == fbc) & (exchange_rate_table["to_currency"] == "AUD")].loc[:,"exchange_rate"].values[0]
+        price_aud = er_aud * x
+        price_aud_list.append(round(float(price_aud),3))
+        er_sgd = exchange_rate_table[(exchange_rate_table["from_base_code"] == fbc) & (exchange_rate_table["to_currency"] == "SGD")].loc[:,"exchange_rate"].values[0]
+        price_sgd = er_sgd * x
+        price_sgd_list.append(round(float(price_sgd),3))
+    
+    return {"price_local": price_local, "price_usd": price_usd_list, "price_eur": price_eur_list, "price_chf": price_chf_list, "price_jpy": price_jpy_list,
+            "price_cny": price_cny_list, "price_aud": price_aud_list, "price_sgd": price_sgd_list}
+
 
 from app.database_sqlalchemy import SessionLocal
 from app.tables import Product
@@ -208,7 +346,7 @@ def insert_to_table(state: GoogleShoppingState):
 
     db = SessionLocal()
     try:
-        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, owner_id in zip_longest(
+        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, product_name_en, measurement_scale_standardized, quantity_standardized, price_local, price_usd, price_eur, price_chf, price_jpy, price_cny, price_aud, price_sgd, product_category, owner_id in zip_longest(
             state['product_name'], 
             state['quantity'],
             state['measurement_scale'],
@@ -222,6 +360,18 @@ def insert_to_table(state: GoogleShoppingState):
             state['all_timestamp_extract'],
             question_list,
             state['all_title_final'],
+            state['product_name_en'],
+            state['measurement_scale_standardized'],
+            state['quantity_standardized'],
+            state['price_local'],
+            state['price_usd'],
+            state['price_eur'],
+            state['price_chf'],
+            state['price_jpy'],
+            state['price_cny'],
+            state['price_aud'],
+            state['price_sgd'],                        
+            state['product_category'],              
             owner_id_list
             ) : 
 
@@ -239,13 +389,25 @@ def insert_to_table(state: GoogleShoppingState):
                 timestamp_extract = timestamp_extract,
                 questions = questions,
                 nonparsed_response = nonparsed_response, #added 7 mar 2026 
+                product_name_en = product_name_en,
+                measurement_scale_standardized = measurement_scale_standardized,
+                quantity_standardized = quantity_standardized,
+                price_local = price_local,
+                price_usd = price_usd,
+                price_eur = price_eur,
+                price_chf = price_chf,
+                price_jpy = price_jpy,
+                price_cny = price_cny,
+                price_aud = price_aud,
+                price_sgd = price_sgd,
+                product_category = product_category,                  
                 owner_id = owner_id
             )
 
             db.add(new_product)
 
         db.commit()
-        print(">>> Commit Successful !")
+        print(">>> Insert data to table products using app_gsc is successful !")
     
     except Exception as e:
         db.rollback()
@@ -255,7 +417,7 @@ def insert_to_table(state: GoogleShoppingState):
     finally:
         db.close()
 
-    return state
+    #return state #24 march 2026 no need to return state as this node is to insert data !
 
 from langgraph.graph import END, StateGraph, START
 
@@ -263,12 +425,20 @@ graph_gsc = StateGraph(GoogleShoppingState)
 graph_gsc.add_node("s_extract", s_extract)
 graph_gsc.add_node("bd_extract", bd_extract)
 graph_gsc.add_node("gs_next_processing", gs_next_processing)
+graph_gsc.add_node("next_translate", next_translate)
+graph_gsc.add_node("next_productcategorization", next_productcategorization)
+graph_gsc.add_node("next_quantity_standardize", next_quantity_standardize)
+graph_gsc.add_node("next_price_currency_conversion", next_price_currency_conversion)
 graph_gsc.add_node("insert_to_table", insert_to_table)
 graph_gsc.add_edge(START, "s_extract")
 graph_gsc.add_edge(START, "bd_extract")
 graph_gsc.add_edge(["s_extract","bd_extract"], "gs_next_processing")
 #graph_gsc.add_edge("s_extract","gs_next_processing")
-graph_gsc.add_edge("gs_next_processing", "insert_to_table")
+graph_gsc.add_edge("gs_next_processing", "next_translate")
+graph_gsc.add_edge("next_translate", "next_productcategorization")
+graph_gsc.add_edge("next_productcategorization", "next_quantity_standardize")
+graph_gsc.add_edge("next_quantity_standardize", "next_price_currency_conversion")
+graph_gsc.add_edge("next_price_currency_conversion", "insert_to_table")
 graph_gsc.add_edge("insert_to_table", END)
 
 app_gsc = graph_gsc.compile()
