@@ -15,12 +15,14 @@ def safe_extract_item(response):
     
     return str(response) 
 
-from urllib.parse import urlsplit, urlunsplit, quote
+from urllib.parse import urlsplit, urlunsplit, quote, unquote
 
-def normalize_url(url):
+def normalize_url(url): #edited 24 march 2026 to prevent double encoding
     parts = urlsplit(url)
-    path = quote(parts.path)
-    query = quote(parts.query, safe="=&")
+
+    # Decode first to avoid double encoding
+    path = quote(unquote(parts.path))
+    query = quote(unquote(parts.query), safe="=&")
 
     return urlunsplit((parts.scheme, parts.netloc, path, query, parts.fragment))
 
