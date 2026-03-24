@@ -67,10 +67,10 @@ def extract_tavily_v2(state: ExtractState):
     sources = []
     countries = [] 
     for url in state['urls']:
-        url = url.strip() 
-        url = normalize_url(url)        
+        url_mod = url.strip() 
+        url_mod = normalize_url(url_mod) #24 march 2026: use url_mod for extraction. For idx, keep using original url.        
         try:
-            data = client.extract(urls=url, extract_depth='advanced', timeout=60) #14 mar 2026: allow waiting 60 seconds to extract URL.
+            data = client.extract(urls=url_mod, extract_depth='advanced', timeout=60) #14 mar 2026: allow waiting 60 seconds to extract URL.
             results = data["results"]
             content = [item['raw_content'] for item in results]
             source = [item['url'] for item in results]
