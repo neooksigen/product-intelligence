@@ -407,7 +407,8 @@ def run_scheduler():
             else : 
                 logger.info("All GSC tasks completed. Restarting pipeline.")
                 #logger.info("Restarting for {} hours...\n".format(86400/3600))
-                #time.sleep(86400)                
+                logger.info("Restarting for {} minutes...\n".format(INTERVAL_SECONDS/60/2))
+                time.sleep(INTERVAL_SECONDS/2)                
                 stage = "SEARCH" 
                 last_stage = "GSC"
                 continue 
