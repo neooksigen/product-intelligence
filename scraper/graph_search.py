@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from langchain_openai import ChatOpenAI
-llm = ChatOpenAI(model="gpt-5.2", temperature=0) 
-llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0) #11 march 2026: for summarization and parsing
+llm = ChatOpenAI(model="gpt-5.2", temperature=0, model_kwargs={"response_format": {"type": "json_object"}}) 
+llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0, model_kwargs={"response_format": {"type": "json_object"}}) #11 march 2026: for summarization and parsing #26 march 2026 tune in model to reduce token output cost
 
 import datetime
 datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
