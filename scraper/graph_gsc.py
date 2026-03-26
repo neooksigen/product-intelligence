@@ -8,7 +8,7 @@ from typing import Annotated
 from langgraph.graph import MessagesState
 from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, trim_messages #added 26 march 2026 but not sure if this works to reduce output token cost
 import re
 import http.client
 import json
@@ -21,8 +21,8 @@ import pandas as pd #added 24 march 2026
 import numpy as np #added 24 march 2026
 
 from langchain_openai import ChatOpenAI
-llm = ChatOpenAI(model="gpt-5.2", temperature=0)
-llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0) #11 march 2026: for summarization and parsing 
+llm = ChatOpenAI(model="gpt-5.2", temperature=0, model_kwargs={"response_format": {"type": "json_object"}})
+llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0, model_kwargs={"response_format": {"type": "json_object"}}) #11 march 2026: for summarization and parsing #26 march 2026: model tune up to further reduce output token cost
 
 import datetime
 end_date = datetime.datetime.now().date().strftime('%Y-%m-%d')
@@ -96,6 +96,13 @@ def s_extract(state: GoogleShoppingState):
     response = requests.request("POST", url, headers=headers, json=payload)
     serper_data_01 = json.loads(response.text) #json.loads to convert into json tidyly, good for extraction later
     serper_data_02 = serper_data_01.get('shopping')
+    #25 march 2026: take just 15 results from Google Shopping, to reduce cost on llm
+    if len(serper_data_02) >= 15 :
+        rand_i = np.random.choice(range(0,len(serper_data_02)), size=15, replace=False).tolist()
+        serper_data_03 = [serper_data_02[i] for i in rand_i]
+        #serper_data_03 = serper_data_02[0:15]
+    else : 
+        serper_data_03 = serper_data_02
     s_list_title = []
     s_list_source = []
     s_list_price = []
@@ -103,7 +110,7 @@ def s_extract(state: GoogleShoppingState):
     s_list_ratingcount = []
     s_list_timestamp_extract = []
     s_list_method = []
-    for item in serper_data_02:
+    for item in serper_data_03:
         s_list_title.append(item.get('title')) 
         s_list_source.append(item.get('source'))
         pie = item.get('price')
@@ -146,6 +153,13 @@ def bd_extract(state: GoogleShoppingState):
     response.raise_for_status()
     brightdata_data = response.json()
     brightdata_results_02 = brightdata_data.get('shopping')
+    # 26 mar 2026: take just 15 results from Google Shopping, to reduce llm output cost later
+    if len(brightdata_results_02) >= 15:
+        rand_i = np.random.choice(range(0,len(brightdata_results_02)), size=15, replace=False).tolist()
+        brightdata_results_03 = [brightdata_results_02[i] for i in rand_i]        
+        #brightdata_results_03 = brightdata_results_02[0:15]
+    else : 
+        brightdata_results_03 = brightdata_results_02
     bd_list_title = []
     bd_list_price = []
     bd_list_shop = []
@@ -153,7 +167,7 @@ def bd_extract(state: GoogleShoppingState):
     bd_list_reviews_cnt = []
     bd_list_timestamp_extract = []
     bd_list_method = []    
-    for item in brightdata_results_02 :
+    for item in brightdata_results_03 :
         bd_list_title.append(item.get('title'))
         pie_bd = item.get('price')
         pie_bd_nxt = pie_bd.replace("\xa0", " ")        
