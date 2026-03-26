@@ -19,7 +19,7 @@ from scraper.utils import get_latest_exchange_rate, rates_to_dataframe, rates_to
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 20 * 60  # 20 minutes 24 mar 2026 changed from 40 to 20 minutes
+INTERVAL_SECONDS = 30 * 60  # 30 minutes 26 mar 2026 changed from 40 to 30 minutes because the nodes has run faster and keep reduced cost
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
