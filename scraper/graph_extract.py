@@ -225,7 +225,15 @@ def tavily_parse(state: ExtractState):
                 })
     
     # Extract product name, quantity, measurement scale, price
-    for item in product_lines:
+    # 26 march 2026: reduce collecting total item to just 18 items to reduce token output cost, adapt from graph_gsc node s_extract/bd_extract
+    if len(product_lines) >= 18:
+        rand_i = np.random.choice(range(0,len(product_lines)), size=18, replace=False).tolist()
+        product_lines_01 = [product_lines[i] for i in rand_i]        
+        #product_lines_01 = product_lines[0:15]
+    else : 
+        product_lines_01 = product_lines
+
+    for item in product_lines_01:
         product_details = item['content'].strip().upper()
         prompt = parse_instructions.format(product_detail=product_details)
         response = llm_alt.with_structured_output(ParseResults).invoke(prompt)
@@ -262,9 +270,10 @@ Format as JSON list only.
 
 """
 
+#26 march 2026: remove url to reduce token output cost , the product categorization still works well on graph_gsc and graph_search without url...
 categorize_instructions = """
-You will receive {product_name} and {url} .
-Based on {product_name} and {url}, please help to categorize the product into well known product category. 
+You will receive {product_name} .
+Based on {product_name} , please help to categorize the product into well known product category. 
 Well known product category example: rice, egg, chicken meat, beef, vegetable, fruit, seasoning, crackers, drinks, sweets, soap, shampoo, kitchen cleaner, etc.
 
 Output into:
@@ -278,7 +287,7 @@ class TranslateResults(BaseModel):
     product_name_en: list[str] = Field(description= "Product name English version.") 
 
 class ProductCategoryResults(BaseModel):
-    product_category : list[str] = Field(description= "Product category determined based on product name and url. Example product category: rice, egg, chicken meat, beef, vegetable, fruit, seasoning, crackers, drinks, sweets, soap, shampoo, kitchen cleaner, etc.")
+    product_category : list[str] = Field(description= "Product category determined based on product name. Example product category: rice, egg, chicken meat, beef, vegetable, fruit, seasoning, crackers, drinks, sweets, soap, shampoo, kitchen cleaner, etc.")
 
 def next_translate(state: ExtractState):
     product_name_en_list = []
@@ -291,8 +300,8 @@ def next_translate(state: ExtractState):
 
 def next_productcategorization(state: ExtractState):
     product_category_list = []
-    for a, b in zip(state['product_name'], state['url_per_product']):
-        prompt = categorize_instructions.format(product_name=a, url=b)
+    for a in state['product_name']:
+        prompt = categorize_instructions.format(product_name=a)
         response = llm_alt.with_structured_output(ProductCategoryResults).invoke(prompt)
         product_category_list.append(safe_extract_item(response.product_category))
 
