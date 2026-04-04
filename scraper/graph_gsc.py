@@ -97,8 +97,9 @@ def s_extract(state: GoogleShoppingState):
     serper_data_01 = json.loads(response.text) #json.loads to convert into json tidyly, good for extraction later
     serper_data_02 = serper_data_01.get('shopping')
     #25 march 2026: take just 15 results from Google Shopping, to reduce cost on llm
-    if len(serper_data_02) >= 15 :
-        rand_i = np.random.choice(range(0,len(serper_data_02)), size=15, replace=False).tolist()
+    #3 april 2026: increase to 20, because BD is deactivated
+    if len(serper_data_02) >= 20 :
+        rand_i = np.random.choice(range(0,len(serper_data_02)), size=20, replace=False).tolist()
         serper_data_03 = [serper_data_02[i] for i in rand_i]
         #serper_data_03 = serper_data_02[0:15]
     else : 
@@ -208,7 +209,7 @@ class TitleParseResults(BaseModel):
     measurement_scale: list[str] = Field(description= "Scale of quantity such as GR, L, EKOR, BUAH, ML, etc.")
 
 def gs_next_processing(state: GoogleShoppingState):
-    state['all_title'] = state['s_title'] + state['bd_title'] 
+    state['all_title'] = state['s_title'] #+ state['bd_title'] #3 april 2026: BD is not available on certain countries. Also to reduce cost, then BD will be deactivated.
     product_name_list = []
     quantity_list = []
     measurement_scale_list = []
@@ -226,12 +227,12 @@ def gs_next_processing(state: GoogleShoppingState):
     return {"product_name": product_name_list, 
         "quantity": quantity_list, 
         "measurement_scale": measurement_scale_list, 
-           "price": state['s_price'] + state['bd_price'], 
-           "source": state['s_source'] + state['bd_shop'], 
-           "rating": state['s_rating'] + state['bd_rating'], 
-           "review_count": state['s_ratingcount'] + state['bd_reviews_cnt'],
-           "all_method": state['s_method'] + state['bd_method'], 
-            "all_timestamp_extract": state['s_timestamp_extract'] + state['bd_timestamp_extract'],
+           "price": state['s_price'], #+ state['bd_price'], 
+           "source": state['s_source'], #+ state['bd_shop'], 
+           "rating": state['s_rating'], #+ state['bd_rating'], 
+           "review_count": state['s_ratingcount'], #+ state['bd_reviews_cnt'],
+           "all_method": state['s_method'], #+ state['bd_method'], 
+            "all_timestamp_extract": state['s_timestamp_extract'], #+ state['bd_timestamp_extract'],
             "all_title_final": item_list, 
             "country_per_product": country_per_product_list}
 
@@ -306,7 +307,7 @@ def next_price_currency_conversion(state: GoogleShoppingState):
     price_sgd_list = []
     exchange_rate_table = get_latest_exchange_rate()
     price_local = [
-        parse_price(m) for m in state['price']
+        parse_price(m)["fin"] for m in state['price'] #29 mar 2026: parse_price def was just edited, use fin to get final value
     ]
     dummy_country_fbc_mapping = pd.DataFrame({
         "country":["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
@@ -353,14 +354,14 @@ def insert_to_table(state: GoogleShoppingState):
     question_list = [] 
     owner_id_list = []
     for i in range(len(state['product_name'])):
-        place_list.append("Indonesia")
+        place_list.append(state['country']) #edited on 3 april 2026
         source_date_list.append(None)
         question_list.append(safe_extract_item(state['user_ask']))
         owner_id_list.append(os.getenv("DB_OWNER_ID_00"))
 
     db = SessionLocal()
     try:
-        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, product_name_en, measurement_scale_standardized, quantity_standardized, price_local, price_usd, price_eur, price_chf, price_jpy, price_cny, price_aud, price_sgd, product_category, owner_id in zip_longest(
+        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, product_name_en, measurement_scale_standardized, quantity_standardized, price_local, price_usd, price_eur, price_chf, price_jpy, price_cny, price_aud, price_sgd, product_category, owner_id, country in zip_longest(
             state['product_name'], 
             state['quantity'],
             state['measurement_scale'],
@@ -386,7 +387,8 @@ def insert_to_table(state: GoogleShoppingState):
             state['price_aud'],
             state['price_sgd'],                        
             state['product_category'],              
-            owner_id_list
+            owner_id_list,
+            state['country_per_product']
             ) : 
 
             new_product = Product(
@@ -415,7 +417,8 @@ def insert_to_table(state: GoogleShoppingState):
                 price_aud = price_aud,
                 price_sgd = price_sgd,
                 product_category = product_category,                  
-                owner_id = owner_id
+                owner_id = owner_id,
+                country = country #added 3 apr 2026
             )
 
             db.add(new_product)
@@ -437,7 +440,7 @@ from langgraph.graph import END, StateGraph, START
 
 graph_gsc = StateGraph(GoogleShoppingState)
 graph_gsc.add_node("s_extract", s_extract)
-graph_gsc.add_node("bd_extract", bd_extract)
+#graph_gsc.add_node("bd_extract", bd_extract)
 graph_gsc.add_node("gs_next_processing", gs_next_processing)
 graph_gsc.add_node("next_translate", next_translate)
 graph_gsc.add_node("next_productcategorization", next_productcategorization)
@@ -445,9 +448,9 @@ graph_gsc.add_node("next_quantity_standardize", next_quantity_standardize)
 graph_gsc.add_node("next_price_currency_conversion", next_price_currency_conversion)
 graph_gsc.add_node("insert_to_table", insert_to_table)
 graph_gsc.add_edge(START, "s_extract")
-graph_gsc.add_edge(START, "bd_extract")
-graph_gsc.add_edge(["s_extract","bd_extract"], "gs_next_processing")
-#graph_gsc.add_edge("s_extract","gs_next_processing")
+#graph_gsc.add_edge(START, "bd_extract")
+#graph_gsc.add_edge(["s_extract","bd_extract"], "gs_next_processing")
+graph_gsc.add_edge("s_extract","gs_next_processing")
 graph_gsc.add_edge("gs_next_processing", "next_translate")
 graph_gsc.add_edge("next_translate", "next_productcategorization")
 graph_gsc.add_edge("next_productcategorization", "next_quantity_standardize")
