@@ -33,6 +33,7 @@ class Product(Base):
     price_sgd: Mapped[float] = mapped_column(Float)
     product_category: Mapped[str] = mapped_column(Text)
     owner_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    country: Mapped[str] = mapped_column(Text) # added 3 april 2026
 
 class SearchQueries(Base):
     __tablename__ = "search_queries" 
