@@ -19,7 +19,11 @@ from scraper.utils import get_latest_exchange_rate, rates_to_dataframe, rates_to
 # CONFIG
 # --------------------------------------------------
 
-INTERVAL_SECONDS = 30 * 60  # 30 minutes 26 mar 2026 changed from 40 to 30 minutes because the nodes has run faster and keep reduced cost
+INTERVAL_SECONDS = 20 * 60  # 20 minutes 24 mar 2026 changed from 40 to 20 minutes
+#4 April 2026: specify for graph_search, graph_extract, graph_gsc
+INTERVAL_SECONDS_SEARCH = 50 * 60
+INTERVAL_SECONDS_EXTRACT = 20 * 60
+INTERVAL_SECONDS_GSC = 50 * 60
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -329,8 +333,8 @@ def run_scheduler():
                             time.sleep(2)
                 last_stage = "SEARCH"
                 time.sleep(2)
-                logger.info("Sleeping for {} minutes...\n".format(INTERVAL_SECONDS/60))
-                time.sleep(INTERVAL_SECONDS)
+                logger.info("Sleeping for {} minutes...\n".format(INTERVAL_SECONDS_SEARCH/60))
+                time.sleep(INTERVAL_SECONDS_SEARCH)
                 
             else :
                 logger.info("All SEARCH tasks completed. Moving to EXTRACT.")
@@ -365,8 +369,8 @@ def run_scheduler():
                             time.sleep(2)
                 last_stage = "EXTRACT"
                 time.sleep(2)
-                logger.info(f"Sleeping for {INTERVAL_SECONDS/60} minutes...\n") # 16 march 2026 sleeping 
-                time.sleep(INTERVAL_SECONDS)                            
+                logger.info(f"Sleeping for {INTERVAL_SECONDS_EXTRACT/60} minutes...\n") # 16 march 2026 sleeping 
+                time.sleep(INTERVAL_SECONDS_EXTRACT)                            
              
             else : 
                 logger.info("All EXTRACT tasks completed. Moving to GSC.") 
@@ -401,8 +405,8 @@ def run_scheduler():
                             time.sleep(2)
                 last_stage = "GSC"
                 time.sleep(2)
-                logger.info("Sleeping for {} minutes...\n".format(INTERVAL_SECONDS/60))
-                time.sleep(INTERVAL_SECONDS)
+                logger.info("Sleeping for {} minutes...\n".format(INTERVAL_SECONDS_GSC/60))
+                time.sleep(INTERVAL_SECONDS_GSC)
                 
             else : 
                 logger.info("All GSC tasks completed. Restarting pipeline.")
