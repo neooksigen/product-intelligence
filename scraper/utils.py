@@ -28,7 +28,7 @@ def normalize_url(url): #edited 24 march 2026 to prevent double encoding
 
 import re 
 #21 march 2026: new function parse_price to convert price text into price float
-def parse_price(value: str) -> float:
+def parse_price(value: str):
     if not value:
         return None
     
@@ -37,7 +37,12 @@ def parse_price(value: str) -> float:
     # Remove common currency symbols and codes
     value = re.sub(r'(rp|idr|usd|eur|jpy|sgd|aud|inr)', '', value)
     value = re.sub(r'[^\d,.\-]', '', value)  # keep only digits, comma, dot, minus
+    value = value.rstrip(".") #29 mar 2026: cleaned again possible . at the end of string
+    value_temp = value #29 mar 2026: value_temp to check cleaned value, if required
     
+    # Check if value still contains non-numeric (excluding dot) (case of Arabian money value)
+    has_non_numeric = bool(re.search(r"[^\d.]", value))
+
     # Case 1: Indonesian/European format → 1.234,56
     if ',' in value and '.' in value:
         if value.rfind(',') > value.rfind('.'):
@@ -56,12 +61,17 @@ def parse_price(value: str) -> float:
     
     # Case 3: Only dot → assume thousand separator
     elif '.' in value:
-        value = value.replace('.', '')
+        if value.count('.') == 1 and len(value.split('.')[0]) == 0:
+            value = value.replace('.', '.')
+        elif value.count('.') == 1 and len(value.split('.')[-1]) <= 2: #enhanced 29 march 2026 so 12.99 will be treated as 12.99 (=no change).
+            value = value.replace('.', '.')
+        else:
+            value = value.replace('.','')
     
     try:
-        return float(value)
+        return {"fin":float(value), "value_temp":value_temp}
     except:
-        return None
+        return {"fin":None, "value_temp":None}
 
 import re
 #22 March 2026: new function to standardize quantity & measurement scale, deterministic without llm call
