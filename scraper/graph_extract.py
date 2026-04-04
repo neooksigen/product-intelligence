@@ -326,7 +326,7 @@ def next_price_currency_conversion(state: ExtractState):
     price_sgd_list = []
     exchange_rate_table = get_latest_exchange_rate()
     price_local = [
-        parse_price(m) for m in state['price']
+        parse_price(m)["fin"] for m in state['price'] #29 mar 2026: parse_price def was just edited, use fin to get final value
     ]
     dummy_country_fbc_mapping = pd.DataFrame({
         "country":["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
@@ -384,7 +384,7 @@ def insert_to_table(state: ExtractState):
 
     db = SessionLocal()
     try:
-        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, product_name_en, measurement_scale_standardized, quantity_standardized, price_local, price_usd, price_eur, price_chf, price_jpy, price_cny, price_aud, price_sgd, product_category, owner_id in zip_longest(
+        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, product_name_en, measurement_scale_standardized, quantity_standardized, price_local, price_usd, price_eur, price_chf, price_jpy, price_cny, price_aud, price_sgd, product_category, owner_id, country in zip_longest(
             state['product_name'], 
             state['quantity'],
             state['measurement_scale'],
@@ -410,7 +410,8 @@ def insert_to_table(state: ExtractState):
             state['price_aud'],
             state['price_sgd'],                        
             state['product_category'],            
-            owner_id_list
+            owner_id_list,
+            state['country_per_product']
             ) : 
 
             new_product = Product(
@@ -439,7 +440,8 @@ def insert_to_table(state: ExtractState):
                 price_aud = price_aud,
                 price_sgd = price_sgd,
                 product_category = product_category,
-                owner_id = owner_id
+                owner_id = owner_id,
+                country = country #added 3 april 2026
             )
 
             db.add(new_product)
