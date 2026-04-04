@@ -79,9 +79,12 @@ class SearchState(TypedDict):
 #GPT search is not compatible with date range start_date and end_date ! 
 #If you put start_date and end_date, GPT search result will be "sorry I cannot search the web".
 #Better you filter out the result just in the end.
+#30 march 2026: edit the instruction to report price in single value (not range x - y) to ensure parse_price working !
 search_instructions_gpt = """ Search the web for {search_query} to generate 8 concise results. 
 For each result:
-1. answer : Concise answer (5-10 words). Answer is containing product name, price per quantity, in where. For example: "Egg cost Rp 27,000-Rp 30,000 per kg in Bandung Indonesia". 
+1. answer : Concise answer (5-10 words). Answer is containing product name, price per quantity, in where. For price, report the single price value. 
+When you find multiple price value, do average to get just single value. 
+Do not report range price x - y ! For example: "Egg cost Rp 27,000 per kg in Bandung Indonesia". 
 2. url : Source URL 
 3. source_published_date : The published date/ last updated date of the source, in format yyyy-mm-dd.
 
@@ -128,7 +131,7 @@ summarise_instructions = """Summarise this search result to answer {question} in
 
 {content} 
 
-Keep it concise and directly answer the question. For example: "Egg cost Rp 27,000-Rp 30,000 per kg in Bandung Indonesia".  
+Keep it concise and directly answer the question. For example: "Egg cost Rp 27,000 per kg in Bandung Indonesia".  
 
 For each search result:
 1. answer: Concise answer (5-10 words). Answer is containing product name, price per quantity, in where.
@@ -181,10 +184,10 @@ PRODUCT NAME PRICE QUANTITY MEASUREMENT SCALE PLACE
 Example:
 Apel Malang Rp 25.000/kg di Jakarta (Harga Spesial)
 Alpukat Rp 5.750/100gr di Surabaya
-Madu Rp 40.000 - Rp 50.000/500 ml di Bandung
+Madu Rp 40.000/500 ml di Bandung
 
 PRODUCT NAME will be Apel Malang, Apel Fuji .
-PRICE will be Rp 25.000, Rp 5.750, Rp 40.000 - Rp 50.000 . 
+PRICE will be Rp 25.000, Rp 5.750, Rp 40.000. 
 QUANTITY will be 1, 100, 500 .
 MEASUREMENT SCALE will be kg, gr, ml .
 PLACE will be Jakarta, Surabaya, Bandung .
@@ -298,7 +301,7 @@ def next_price_currency_conversion(state: SearchState):
     price_sgd_list = []
     exchange_rate_table = get_latest_exchange_rate()
     price_local = [
-        parse_price(m) for m in state['price']
+        parse_price(m)["fin"] for m in state['price'] #29 mar 2026: parse_price def was just edited, use fin to get final value
     ]
     dummy_country_fbc_mapping = pd.DataFrame({
         "country":["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
@@ -355,7 +358,7 @@ def insert_to_table(state: SearchState):
     
     db = SessionLocal()
     try:
-        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, product_name_en, measurement_scale_standardized, quantity_standardized, price_local, price_usd, price_eur, price_chf, price_jpy, price_cny, price_aud, price_sgd, product_category, owner_id in zip_longest(
+        for product_name, quantity, measurement_scale, price, source, rating, review_count, place, method, source_date, timestamp_extract, questions, nonparsed_response, product_name_en, measurement_scale_standardized, quantity_standardized, price_local, price_usd, price_eur, price_chf, price_jpy, price_cny, price_aud, price_sgd, product_category, owner_id, country in zip_longest(
             state['product_name'], 
             state['quantity'],
             state['measurement_scale'],
@@ -381,7 +384,8 @@ def insert_to_table(state: SearchState):
             state['price_aud'],
             state['price_sgd'],                        
             state['product_category'],            
-            owner_id_list
+            owner_id_list,
+            state['country_per_product']
             ) : 
 
             new_product = Product(
@@ -410,7 +414,8 @@ def insert_to_table(state: SearchState):
                 price_aud = price_aud,
                 price_sgd = price_sgd,
                 product_category = product_category,                
-                owner_id = owner_id
+                owner_id = owner_id,
+                country = country #added 3 april 2026
             )
 
             db.add(new_product)
