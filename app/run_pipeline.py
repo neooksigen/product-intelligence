@@ -348,7 +348,8 @@ def run_scheduler():
         elif stage == "EXTRACT" :
 
             gate_extract_urls = check_condition_extract_urls() 
-            if (gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number']) or (gate_extract_urls['latest_loop_order_number'] == 0) or (last_stage == "SEARCH") : 
+            gate_gs_queries = check_condition_gs_queries()
+            if ((gate_extract_urls['all_rows_number'] != gate_extract_urls['rows_with_latest_loop_order_number']) or (gate_extract_urls['latest_loop_order_number'] == 0) or (last_stage == "SEARCH")) and (gate_gs_queries['all_rows_number'] == gate_gs_queries['rows_with_latest_loop_order_number']): 
 
                 extract_task = get_next_extract_task() 
                 run_extract_task(extract_task) #sessionlocal was already created in last node of graph_extract long time ago 16 mar 2026
@@ -371,7 +372,13 @@ def run_scheduler():
                 time.sleep(2)
                 logger.info(f"Sleeping for {INTERVAL_SECONDS_EXTRACT/60} minutes...\n") # 16 march 2026 sleeping 
                 time.sleep(INTERVAL_SECONDS_EXTRACT)                            
-             
+
+            #19 april 2026: improve this elif below and if above. When the pipeline redeploy (due to code edit etc.) and GSC task is incomplete, then complete GSC task first. Do not start over from graph_extract !
+            elif gate_gs_queries['all_rows_number'] != gate_gs_queries['rows_with_latest_loop_order_number'] : 
+                logger.info("Finish first GSC tasks !")
+                stage = "GSC" 
+                last_stage = "EXTRACT" 
+                continue
             else : 
                 logger.info("All EXTRACT tasks completed. Moving to GSC.") 
                 stage = "GSC" 
@@ -426,5 +433,4 @@ def run_scheduler():
 
 if __name__ == "__main__":
     run_scheduler()
-
 
