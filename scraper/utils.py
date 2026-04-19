@@ -74,6 +74,7 @@ def parse_price(value: str):
         return {"fin":None, "value_temp":None}
 
 import re
+import numpy as np
 #22 March 2026: new function to standardize quantity & measurement scale, deterministic without llm call
 def standardize_quantity(quantity: str, measurement_scale: str):
     if not quantity:
@@ -83,16 +84,39 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     u = measurement_scale.upper().strip() if measurement_scale else ""
 
     # --- STEP 1: Clean quantity ---
-    # Remove unwanted characters except digits, dot, X
-    q = re.sub(r'[^0-9.X]', '', q)
+    # Remove unwanted characters except digits, dot, comma, strip, X
+    q = re.sub(r'[^0-9.,X\-]', '', q)
 
     # --- STEP 2: Handle multiplication ---
+    # enhanced 19 april 2026 to handle comma and -
     if 'X' in q:
         parts = q.split('X')
-        numbers = [float(p) for p in parts if p]
+        numbers = []
+        for p in parts:
+            if p.count(',') > 0:
+                p = p.replace(',','.')
+                p = float(p)
+            numbers.append(float(p))
+        ###numbers = [float(p) for p in parts if p]
         qty = 1
         for n in numbers:
             qty *= n
+    
+    elif '-' in q:
+        parts = q.split('-')
+        numbers = []
+        for p in parts[0:2]:
+            if p.count(',') > 0:
+                p = p.replace(',','.')
+                p = float(p)
+            numbers.append(float(p))
+        ###numbers = [float(p) for p in parts if p]
+        qty = float(np.mean(numbers))
+
+    elif ',' in q:
+        qty = q.replace(',','.')
+        qty = float(qty)
+            
     else:
         qty = float(q) if q else 0
 
@@ -124,6 +148,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     else:
         # fallback (unknown unit)
         return qty, u
+
 
 import pandas as pd
 import datetime
