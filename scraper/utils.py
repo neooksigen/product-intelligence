@@ -133,7 +133,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['G', 'GR', 'GRAM']:
         return qty / 1000, "Kilogram"
 
-    elif u in ['KG', 'KILOGRAM']:
+    elif u in ['KG', 'KILOGRAM', 'K']:
         return qty, "Kilogram"
 
     elif u in ['CM']:
@@ -144,6 +144,89 @@ def standardize_quantity(quantity: str, measurement_scale: str):
 
     elif u in ['PCS', 'S', 'BUTIR', 'PACK']:
         return qty, "Pcs"
+    
+    #25 April 2026: Arabic measurement scale standardized
+    elif u in ['بوصة']:
+        return qty * 0.0254, "Meter" 
+
+    elif u in ['بيضة','حب','حبة','حزمة','ربطة','فخذين','كبسولة']:
+        return qty, "Pcs" 
+
+    elif u in ['طبق','طبق حجم كبير','كيس كبير']:
+        return qty, "Carton" 
+
+    elif u in ['ك 10x حبات']:
+        return qty / 10, "Pcs" 
+
+    elif u in ['لتر']:
+        return qty, "Liter" 
+    
+    elif u in ['مليلتر','مل']:
+        return qty / 1000, "Liter"
+
+    elif u in ['ج','جرام','جم','غ','غرام']:
+        return qty / 1000, "Kilogram" 
+
+    elif u in ['ريال','ك','كج','كجم','كغ','كغم','كيلو','كيلو (حبة)','كيلو جرام','كيلوجرام']:
+        return qty, "Kilogram" 
+
+    elif u in ['واط']:
+        return qty, "Watt"  
+
+    #25 April 2026: Russia measurement scale standardized
+    elif u in ['кг','КГ']:
+        return qty, "Kilogram" 
+
+    elif u in ['грамм','г','гр','ГРАММ','ГР','Г']:        
+        return qty / 1000, "Kilogram" 
+    
+    elif u in ['л','Л','литр','ЛИТР']:
+        return qty, "Liter" 
+
+    elif u in ['мл','МЛ']:
+        return qty / 1000, "Liter"
+
+    elif u in ['шт','ШТ']:
+        return qty, "Pcs"
+    
+    #25 April 2026: Japan measurement scale standardized
+    elif u in ['リットル']:
+        return qty, "Liter" 
+
+    elif u in ['ミリリットル']:
+        return qty / 1000, "Liter"
+
+    #25 April 2026: China measurement scale standardized
+    elif u in ['公斤']:
+        return qty, "Kilogram" 
+
+    elif u in ['升']:
+        return qty, "Liter" 
+
+    elif u in ['克']:
+        return qty / 1000, "Kilogram"
+
+    elif u in ['毫升']:
+        return qty / 1000, "Liter"       
+
+    #25 April 2026: Thailand measurement scale standardized
+    elif u in ['กิโลกรัม','กิโล']:
+        return qty, "Kilogram" 
+    
+    elif u in ['ขีด']:
+        return qty * 100 / 1000, "Kilogram" 
+    
+    elif u in ['กรัม']:
+        return qty / 1000, "Kilogram" 
+    
+    elif u in ['ลิตร','ล','ล.','ทะนาน']:
+        return qty, "Liter" 
+
+    elif u in ['มิลลิลิตร','มล','มล.']:
+        return qty / 1000, "Liter" 
+    
+    elif u in ['ถัง']:
+        return qty / 20, "Liter"
 
     else:
         # fallback (unknown unit)
