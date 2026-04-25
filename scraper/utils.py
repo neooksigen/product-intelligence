@@ -164,7 +164,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['مليلتر','مل']:
         return qty / 1000, "Liter"
 
-    elif u in ['ج','جرام','جم','غ','غرام']:
+    elif u in ['ج','جرام','جم','غ','غرام','غم']:
         return qty / 1000, "Kilogram" 
 
     elif u in ['ريال','ك','كج','كجم','كغ','كغم','كيلو','كيلو (حبة)','كيلو جرام','كيلوجرام']:
