@@ -73,30 +73,44 @@ def parse_price(value: str):
     except:
         return {"fin":None, "value_temp":None}
 
+#new def 26 apr 2026
+def safe_float(x):
+    try:
+        return float(x)
+    except:
+        return None
+
 import re
 import numpy as np
+#22 March 2026: new function to standardize quantity & measurement scale, deterministic without llm call
 #22 March 2026: new function to standardize quantity & measurement scale, deterministic without llm call
 def standardize_quantity(quantity: str, measurement_scale: str):
     if not quantity:
         return None, None
 
-    q = quantity.upper().strip()
+    q = quantity.upper().strip().replace(' ', '') #26 april 2026: add replace space to remove space
     u = measurement_scale.upper().strip() if measurement_scale else ""
 
     # --- STEP 1: Clean quantity ---
-    # Remove unwanted characters except digits, dot, comma, strip, X
-    q = re.sub(r'[^0-9.,X\-]', '', q)
+    # Remove unwanted characters except digits, dot, comma, strip, X, *, +
+    q = re.sub(r'[^0-9.,X\-\*\+]', '', q)
 
     # --- STEP 2: Handle multiplication ---
     # enhanced 19 april 2026 to handle comma and -
-    if 'X' in q:
+    # 26 apr 2026 add this if , if digit not detected, simply return qty = 0..
+    if not re.search(r'\d', q):
+        print(f"[WARNING] No digits in quantity: {quantity} → cleaned: {q}")
+        qty = 0
+        
+    elif 'X' in q :
         parts = q.split('X')
         numbers = []
         for p in parts:
             if p.count(',') > 0:
                 p = p.replace(',','.')
-                p = float(p)
-            numbers.append(float(p))
+            cal = safe_float(p)
+            if cal is not None:
+                numbers.append(cal)
         ###numbers = [float(p) for p in parts if p]
         qty = 1
         for n in numbers:
@@ -108,17 +122,51 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         for p in parts[0:2]:
             if p.count(',') > 0:
                 p = p.replace(',','.')
-                p = float(p)
-            numbers.append(float(p))
+            cal = safe_float(p)
+            if cal is not None:                
+                numbers.append(cal)
         ###numbers = [float(p) for p in parts if p]
         qty = float(np.mean(numbers))
 
+    elif '*' in q : #added 26 apr 2026
+        parts = q.split('*')
+        numbers = []
+        for p in parts:
+            if p.count(',') > 0:
+                p = p.replace(',','.')
+            cal = safe_float(p)
+            if cal is not None: 
+                numbers.append(cal)
+        ###numbers = [float(p) for p in parts if p]
+        qty = 1
+        for n in numbers:
+            qty *= n    
+
+    elif '+' in q : #added 26 apr 2026
+        parts = q.split('+')
+        numbers = []
+        for p in parts:
+            if p.count(',') > 0:
+                p = p.replace(',','.')
+            cal = safe_float(p)
+            if cal is not None: 
+                numbers.append(cal)
+        ###numbers = [float(p) for p in parts if p]
+        qty = 1
+        for n in numbers:
+            qty = qty + n
+        qty = qty - 1
+    
     elif ',' in q:
         qty = q.replace(',','.')
-        qty = float(qty)
+        qty = safe_float(qty)
             
     else:
-        qty = float(q) if q else 0
+        cal = safe_float(q)
+        if cal is not None:
+            qty = cal
+        else :
+            qty = 0
 
     # --- STEP 3: Normalize unit ---
     u = u.replace('.', '').strip()
@@ -149,7 +197,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['بوصة']:
         return qty * 0.0254, "Meter" 
 
-    elif u in ['بيضة','حب','حبة','حزمة','ربطة','فخذين','كبسولة']:
+    elif u in ['بيضة','حب','حبة','حزمة','ربطة','فخذين','كبسولة','علب','اكياس']: #8th 9th added 26 april 2026
         return qty, "Pcs" 
 
     elif u in ['طبق','طبق حجم كبير','كيس كبير']:
@@ -161,7 +209,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['لتر']:
         return qty, "Liter" 
     
-    elif u in ['مليلتر','مل']:
+    elif u in ['مليلتر','مل','ملى']: #3rd added on 26 april 2026
         return qty / 1000, "Liter"
 
     elif u in ['ج','جرام','جم','غ','غرام','غم']:
