@@ -93,7 +93,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
 
     # --- STEP 1: Clean quantity ---
     # Remove unwanted characters except digits, dot, comma, strip, X, *, +
-    q = re.sub(r'[^0-9.,X\-\*\+]', '', q)
+    q = re.sub(r'[^0-9.,xX\-\*\+]', '', q) #26 april 2026 add x little
 
     # --- STEP 2: Handle multiplication ---
     # enhanced 19 april 2026 to handle comma and -
@@ -102,7 +102,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         print(f"[WARNING] No digits in quantity: {quantity} → cleaned: {q}")
         qty = 0
         
-    elif 'X' in q :
+    elif 'X' in q or 'x' in q :
         parts = q.split('X')
         numbers = []
         for p in parts:
