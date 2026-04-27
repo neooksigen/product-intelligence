@@ -197,7 +197,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['بوصة']:
         return qty * 0.0254, "Meter" 
 
-    elif u in ['بيضة','حب','حبة','حزمة','ربطة','فخذين','كبسولة','علب','اكياس']: #8th 9th added 26 april 2026
+    elif u in ['بيضة','حب','حبة','حزمة','ربطة','فخذين','كبسولة','علب','اكياس','كيس','حقنة','قطعة','بذرة','العلبة','قطع']: #8th 9th added 26 april 2026, 10th 11th 12th 13th 14th 15th added 27 april 2026
         return qty, "Pcs" 
 
     elif u in ['طبق','طبق حجم كبير','كيس كبير']:
@@ -220,6 +220,12 @@ def standardize_quantity(quantity: str, measurement_scale: str):
 
     elif u in ['واط']:
         return qty, "Watt"  
+
+    elif u in ['أونصة']: #new 27 apr 2026
+        return qty * 0.02835, "Kilogram"
+
+    elif u in ['مجم']: #new 27 apr 2026
+        return qty / 1000, "Kilogram" 
 
     #25 April 2026: Russia measurement scale standardized
     elif u in ['кг','КГ']:
