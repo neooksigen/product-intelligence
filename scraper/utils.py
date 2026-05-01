@@ -93,7 +93,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
 
     # --- STEP 1: Clean quantity ---
     # Remove unwanted characters except digits, dot, comma, strip, X, *, +
-    q = re.sub(r'[^0-9.,xX\-\*\+]', '', q) #26 april 2026 add x little
+    q = re.sub(r'[^0-9.,xX\-\*\+\~]', '', q) #26 april 2026 add x little, 1 may 2026 add ~ due to finding in JP
 
     # --- STEP 2: Handle multiplication ---
     # enhanced 19 april 2026 to handle comma and -
@@ -103,7 +103,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         qty = 0
         
     elif 'X' in q or 'x' in q :
-        parts = q.split('X')
+        parts = q.upper().split('X') #enhanced 1 may 2026 to handle both x and X
         numbers = []
         for p in parts:
             if p.count(',') > 0:
@@ -116,8 +116,8 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         for n in numbers:
             qty *= n
     
-    elif '-' in q:
-        parts = q.split('-')
+    elif '-' in q or '~' in q : #enhanced 1 may 2026 to handle - and ~ (case of JP)
+        parts = re.split(r'[-~]', q)
         numbers = []
         for p in parts[0:2]:
             if p.count(',') > 0:
@@ -243,12 +243,24 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['шт','ШТ']:
         return qty, "Pcs"
     
-    #25 April 2026: Japan measurement scale standardized
+    #25 April 2026: Japan measurement scale standardized, 1 may 2026: edited to add more units found in JP
     elif u in ['リットル']:
         return qty, "Liter" 
 
     elif u in ['ミリリットル']:
         return qty / 1000, "Liter"
+    
+    elif u in ['キロ']:
+        return qty, "Kilogram" 
+    
+    elif u in ['タイプ']:
+        return qty, "Pcs" 
+    
+    elif u in ['セット']:
+        return qty, "Pcs" 
+    
+    elif u in ['個']:
+        return qty, "Pcs"
 
     #25 April 2026: China measurement scale standardized
     elif u in ['公斤']:
@@ -407,5 +419,4 @@ def get_latest_exchange_rate():
     ])
     
     return df
-
 
