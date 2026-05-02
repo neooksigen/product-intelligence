@@ -259,7 +259,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['キロ']:
         return qty, "Kilogram" 
     
-    elif u in ['タイプ','パック']:
+    elif u in ['タイプ','パック','玉','房']: #2 may 2026: added 3rd, 4th
         return qty, "Pcs" 
     
     elif u in ['セット']:
