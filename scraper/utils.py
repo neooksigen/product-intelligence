@@ -91,6 +91,12 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     q = quantity.upper().strip().replace(' ', '') #26 april 2026: add replace space to remove space
     u = measurement_scale.upper().strip() if measurement_scale else ""
 
+    #2 May 2026: add this to convert certain unicode characters into ASCII.
+    q = q.replace('×', 'X')       # Unicode multiplication sign → X
+    q = q.replace('〜', '~')       # Fullwidth tilde → regular tilde
+    q = q.replace('～', '~')       # Another fullwidth tilde variant → regular tilde
+    q = q.replace('＊', '*')       # Fullwidth asterisk → regular asterisk
+
     # --- STEP 1: Clean quantity ---
     # Remove unwanted characters except digits, dot, comma, strip, X, *, +
     q = re.sub(r'[^0-9.,xX\-\*\+\~]', '', q) #26 april 2026 add x little, 1 may 2026 add ~ due to finding in JP
@@ -260,7 +266,10 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         return qty, "Pcs" 
     
     elif u in ['個']:
-        return qty, "Pcs"
+        return qty, "Pcs" 
+    
+    elif u.upper().startswith('G'): #added 2 may 2026
+        return qty / 1000, "Kilogram"
 
     #25 April 2026: China measurement scale standardized
     elif u in ['公斤']:
