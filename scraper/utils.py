@@ -83,7 +83,6 @@ def safe_float(x):
 import re
 import numpy as np
 #22 March 2026: new function to standardize quantity & measurement scale, deterministic without llm call
-#22 March 2026: new function to standardize quantity & measurement scale, deterministic without llm call
 def standardize_quantity(quantity: str, measurement_scale: str):
     if not quantity:
         return None, None
