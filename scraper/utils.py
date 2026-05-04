@@ -88,6 +88,8 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         return None, None
 
     q = quantity.upper().strip().replace(' ', '') #26 april 2026: add replace space to remove space
+    q = q.replace('TO','-')
+    q = q.replace('O','-') #4 May 2026: add this replace to accomodate case "to" or "o" inside the quantity..
     u = measurement_scale.upper().strip() if measurement_scale else ""
 
     #2 May 2026: add this to convert certain unicode characters into ASCII.
@@ -98,7 +100,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
 
     # --- STEP 1: Clean quantity ---
     # Remove unwanted characters except digits, dot, comma, strip, X, *, +
-    q = re.sub(r'[^0-9.,xX\-\*\+\~\T\O]', '', q) #26 april 2026 add x little, 1 may 2026 add ~ due to finding in JP, 5 may 2026: add 'to' case found in IN.
+    q = re.sub(r'[^0-9.,xX\-\*\+\~]', '', q) #26 april 2026 add x little, 1 may 2026 add ~ due to finding in JP, 5 may 2026: add 'to' case found in IN.
 
     # --- STEP 2: Handle multiplication ---
     # enhanced 19 april 2026 to handle comma and -
@@ -109,21 +111,6 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         
     elif 'X' in q or 'x' in q :
         parts = q.upper().split('X') #enhanced 1 may 2026 to handle both x and X
-        numbers = []
-        for p in parts:
-            if p.count(',') > 0:
-                p = p.replace(',','.')
-            cal = safe_float(p)
-            if cal is not None:
-                numbers.append(cal)
-        ###numbers = [float(p) for p in parts if p]
-        qty = 1
-        for n in numbers:
-            qty *= n
-
-    elif 'TO' in q.upper() or 'O' in q.upper() : #added 5 may 2026 to handle 'to' case found in IN. 
-        q = q.upper().replace('T','')
-        parts = q.upper().split('O') 
         numbers = []
         for p in parts:
             if p.count(',') > 0:
