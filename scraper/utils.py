@@ -99,7 +99,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
 
     # --- STEP 1: Clean quantity ---
     # Remove unwanted characters except digits, dot, comma, strip, X, *, +
-    q = re.sub(r'[^0-9.,xX\-\*\+\~]', '', q) #26 april 2026 add x little, 1 may 2026 add ~ due to finding in JP
+    q = re.sub(r'[^0-9.,xX\-\*\+\~\T\O]', '', q) #26 april 2026 add x little, 1 may 2026 add ~ due to finding in JP, 5 may 2026: add 'to' case found in IN.
 
     # --- STEP 2: Handle multiplication ---
     # enhanced 19 april 2026 to handle comma and -
@@ -110,6 +110,21 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         
     elif 'X' in q or 'x' in q :
         parts = q.upper().split('X') #enhanced 1 may 2026 to handle both x and X
+        numbers = []
+        for p in parts:
+            if p.count(',') > 0:
+                p = p.replace(',','.')
+            cal = safe_float(p)
+            if cal is not None:
+                numbers.append(cal)
+        ###numbers = [float(p) for p in parts if p]
+        qty = 1
+        for n in numbers:
+            qty *= n
+
+    elif 'TO' in q.upper() or 'O' in q.upper() : #added 5 may 2026 to handle 'to' case found in IN. 
+        q = q.upper().replace('T','')
+        parts = q.upper().split('O') 
         numbers = []
         for p in parts:
             if p.count(',') > 0:
@@ -181,13 +196,13 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     if u in ['ML']:
         return qty / 1000, "Liter"
 
-    elif u in ['L', 'LT', 'LITER']:
+    elif u in ['L', 'LT', 'LITER','L POUCH','LITRE','LTR']:
         return qty, "Liter"
 
     elif u in ['G', 'GR', 'GRAM']:
         return qty / 1000, "Kilogram"
 
-    elif u in ['KG', 'KILOGRAM', 'K']:
+    elif u in ['KG', 'KILOGRAM', 'K','KGMS','KGS','KILOGRAMS']:
         return qty, "Kilogram"
 
     elif u in ['CM']:
@@ -196,14 +211,27 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['M', 'METER']:
         return qty, "Meter"
 
-    elif u in ['PCS', 'S', 'BUTIR', 'PACK']:
+    elif u in ['PCS', 'S', 'BUTIR', 'PACK','BIG SIZEPICES','BOTTLE','BOX','BUAH','BUNCH','CLOVE','COUNT','EGG','EGGS','PC','PCS/TRAY','PIECE','POUCH','WHOLE','PACKET','PS','PICES']:
         return qty, "Pcs"
     
+    elif u in ['INCHES','INCH']:
+        return qty * 0.0254, "Meter"
+    
+    elif u in ['COUNT/KG','PCS/KG']: #new 4 may 2026
+        qty = 1
+        return qty, "Kilogram"
+    
+    elif u in ['PC / 500G TO 700G']: #new 4 may 2026
+        return qty * 0.6, "Kilogram"
+    
+    elif u in ['PIECE(800-1000GRAM)']: #new 4 may 2026
+        return qty * 0.9, "Kilogram"
+    
     #25 April 2026: Arabic measurement scale standardized
-    elif u in ['بوصة']:
+    elif u in ['بوصة','م','متر']:
         return qty * 0.0254, "Meter" 
 
-    elif u in ['بيضة','حب','حبة','حزمة','ربطة','فخذين','كبسولة','علب','اكياس','كيس','حقنة','قطعة','بذرة','العلبة','قطع']: #8th 9th added 26 april 2026, 10th 11th 12th 13th 14th 15th added 27 april 2026
+    elif u in ['بيضة','حب','حبة','حزمة','ربطة','فخذين','كبسولة','علب','اكياس','كيس','حقنة','قطعة','بذرة','العلبة','قطع','BUAH','GK','HEADS','PASANG','PIECE','أشهر','الحبة','جوهرة','جيجا','حبه','حزمه','حقنه','درج','درجات','ذبيحة','ذهبي هرمي','ربطه','رقم','سلة','صحن','صندوق','صينية','طقم','عبوات','عبوة','علبة','علبه','في','في 1','قرص','قرصاً','كرتون','كيسة مغلفة','مقاعد']: #8th 9th added 26 april 2026, 10th 11th 12th 13th 14th 15th added 27 april 2026
         return qty, "Pcs" 
 
     elif u in ['طبق','طبق حجم كبير','كيس كبير']:
@@ -212,64 +240,102 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['ك 10x حبات']:
         return qty / 10, "Pcs" 
 
-    elif u in ['لتر']:
+    elif u in ['لتر','عبوات 1 لتر','ليتر']:
         return qty, "Liter" 
     
-    elif u in ['مليلتر','مل','ملى']: #3rd added on 26 april 2026
+    elif u in ['مليلتر','مل','ملى','ملل','ملليلتر','ملى','مم']: #3rd added on 26 april 2026
         return qty / 1000, "Liter"
 
-    elif u in ['ج','جرام','جم','غ','غرام','غم']:
+    elif u in ['ج','جرام','جم','غ','غرام','غم','ملغ']:
         return qty / 1000, "Kilogram" 
 
-    elif u in ['ريال','ك','كج','كجم','كغ','كغم','كيلو','كيلو (حبة)','كيلو جرام','كيلوجرام']:
+    elif u in ['ريال','ك','كج','كجم','كغ','كغم','كيلو','كيلو (حبة)','كيلو جرام','كيلوجرام','K','ادراج','كليو','كيلوغرام']:
         return qty, "Kilogram" 
 
     elif u in ['واط']:
         return qty, "Watt"  
 
-    elif u in ['أونصة']: #new 27 apr 2026
+    elif u in ['أونصة','أوقية','أونز','أونصات','اونصة']: #new 27 apr 2026
         return qty * 0.02835, "Kilogram"
 
     elif u in ['مجم']: #new 27 apr 2026
         return qty / 1000, "Kilogram" 
+    
+    elif u in ['أونصة سائلة']: #new 4 may 2026
+        return qty * 0.0295735, "Liter" 
+    
+    elif u in ['جالون']: #new 4 may 2026
+        return qty * 3.78541, "Liter" 
+    
+    elif u in ['رطل']: #new 4 may 2026
+        return qty * 0.453592, "Kilogram"
+    
+    elif u in ['سم']: #new 4 may 2026
+        return qty / 100, "Meter" 
+    
+    elif u in ['كوارت']: #new 4 may 2026
+        return qty * 0.946353, "Liter" 
 
-    #25 April 2026: Russia measurement scale standardized
-    elif u in ['кг','КГ']:
+    elif u in ['كيلو وات']: #new 4 may 2026
+        return qty * 1000, "Watt"     
+    
+
+    #25 April 2026: Russia measurement scale standardized, on 4 may 2025 added some more units
+    elif u in ['кг','КГ','1 КГ','KILO']:
         return qty, "Kilogram" 
 
     elif u in ['грамм','г','гр','ГРАММ','ГР','Г']:        
         return qty / 1000, "Kilogram" 
     
-    elif u in ['л','Л','литр','ЛИТР']:
+    elif u in ['л','Л','литр','ЛИТР','LTR','УПАКОВКИ ПО 1 Л']:
         return qty, "Liter" 
 
-    elif u in ['мл','МЛ']:
+    elif u in ['мл','МЛ','ЛИТРА']:
         return qty / 1000, "Liter"
 
-    elif u in ['шт','ШТ']:
+    elif u in ['шт','ШТ','БУТ','ГОД','ЕВРО','ИНДИЯ','КЛАСС','ПОРЦИЯ','ПЭТ','С','С/М','СЕМ','СМ','УПАКОВКА','ШТ/УП','ШТУКА']:
         return qty, "Pcs"
     
+    elif u in ['Г /10','ГР/10']:
+        return qty / 10, "Kilogram" 
+    
+    elif u in ['ГРР']:
+        return qty * 0.001, "Kilogram"
+        
     #25 April 2026: Japan measurement scale standardized, 1 may 2026: edited to add more units found in JP
-    elif u in ['リットル']:
+    elif u in ['リットル','LITRE','LTR']:
         return qty, "Liter" 
 
-    elif u in ['ミリリットル']:
+    elif u in ['ミリリットル','本(1L)']:
         return qty / 1000, "Liter"
     
-    elif u in ['キロ']:
+    elif u in ['キロ','KG X 袋','KG/袋','KG×6P','KG以上','KG袋','キロ/玉','キロ以上']: #added some on 4 may 2026
         return qty, "Kilogram" 
     
-    elif u in ['タイプ','パック','玉','房']: #2 may 2026: added 3rd, 4th
+    elif u in ['タイプ','パック','玉','房','P','QUẢ','ケース','セット','タイプ','パック','ボール']: #2 may 2026: added 3rd, 4th
         return qty, "Pcs" 
     
     elif u in ['セット']:
         return qty, "Pcs" 
     
-    elif u in ['個']:
+    elif u in ['個','分上','匹','尾','本','束','枚','点','箱','袋']:
         return qty, "Pcs" 
     
     elif u.upper().startswith('G'): #added 2 may 2026
         return qty / 1000, "Kilogram"
+    
+    elif u in ['250G']: #added 4 may 2026
+        return qty * 0.25, "Kilogram"
+    
+    elif u in ['ポンド']: #added 4 may 2026
+        return qty * 0.453592, "Kilogram"
+
+    elif u in ['玉(750G~1KG)']: #added 4 may 2026
+        return qty * 0.875, "Kilogram"
+    
+    elif u in ['箱6〜8本入']: #added 4 may 2026
+        return qty * 7, "Pcs"
+
 
     #25 April 2026: China measurement scale standardized
     elif u in ['公斤']:
