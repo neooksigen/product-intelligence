@@ -336,8 +336,8 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['毫升']:
         return qty / 1000, "Liter"       
 
-    #25 April 2026: Thailand measurement scale standardized
-    elif u in ['กิโลกรัม','กิโล']:
+    #25 April 2026: Thailand measurement scale standardized, 6 may 2026 : edit some on TH
+    elif u in ['กิโลกรัม','กิโล','กก','กก/แพ็ก','กิโล,ถุง']:
         return qty, "Kilogram" 
     
     elif u in ['ขีด']:
@@ -353,7 +353,16 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         return qty / 1000, "Liter" 
     
     elif u in ['ถัง']:
-        return qty / 20, "Liter"
+        return qty / 20, "Liter" 
+    
+    elif u in ['ชิ้น','ต้น','แพ็ค','ฟอง','มัดจุก','เมล็ด','ลูก']:
+        return qty, "Pcs"
+    
+    elif u in ['ออนซ์']:
+        return qty * 0.02835, "Kilogram"
+    
+    elif u in ['ซม']:
+        return qty / 100, "Meter"
 
     else:
         # fallback (unknown unit)
