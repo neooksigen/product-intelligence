@@ -183,6 +183,7 @@ def bd_extract(state: GoogleShoppingState):
            "bd_reviews_cnt": bd_list_reviews_cnt, "bd_timestamp_extract": bd_list_timestamp_extract, "bd_method": bd_list_method}
 
 #enhanced 5 may 2026: enhance title processing after found many cases multiple quantity & measurement scale (last 5 examples)
+#enhanced 14 may 2026: to include case product without ms and quantity, to not include mangga madu to data !!!!
 title_processing_instructions = """ In this {title} you will find string with format :
 
 PRODUCT NAME QUANTITY MEASUREMENT SCALE 
@@ -196,10 +197,11 @@ Lemon Grass Leaves - 100 % Natural & Farm Fresh - 1 Bunch (100Gms)
 Watermelon (Tarbooz) - (Per Piece) (2.5Kg to 3Kg)From Kapil Fresh Vegetables
 Freshwater Prawns / రొయ్యలు - 50-60 Count/Kg
 Cauliflower - 1piece(800-1000gram)
+Chocolate
 
-PRODUCT NAME will be Mangga madu, Jeruk california, Daging ayam paha, Rice, Lemon Grass Leaves - 100 % Natural & Farm Fresh, Watermelon (Tarbooz), Freshwater Prawns, Cauliflower .
-QUANTITY will be 1, 5, 1, 1 X 0.875, 1 X 0.1, 1 X 2.75, 1 X 1, 1 X 0.9 .
-MEASUREMENT SCALE will be kg, buah, ekor, kg, kg, kg, kg, kg.
+PRODUCT NAME will be Mangga madu, Jeruk california, Daging ayam paha, Rice, Lemon Grass Leaves - 100 % Natural & Farm Fresh, Watermelon (Tarbooz), Freshwater Prawns, Cauliflower, Chocolate .
+QUANTITY will be 1, 5, 1, 1 X 0.875, 1 X 0.1, 1 X 2.75, 1 X 1, 1 X 0.9, 0 .
+MEASUREMENT SCALE will be kg, buah, ekor, kg, kg, kg, kg, kg, unknown.
 
 Following example above (but please do not include the example into these product_name, quantity, measurement_scale variables below !), 
 you have to parse the {title} into PRODUCT NAME, QUANTITY, MEASUREMENT SCALE :
