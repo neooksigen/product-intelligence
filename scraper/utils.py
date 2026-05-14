@@ -197,8 +197,23 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['M', 'METER']:
         return qty, "Meter"
 
-    elif u in ['PCS', 'S', 'BUTIR', 'PACK','BIG SIZEPICES','BOTTLE','BOX','BUAH','BUNCH','CLOVE','COUNT','EGG','EGGS','PC','PCS/TRAY','PIECE','POUCH','WHOLE','PACKET','PS','PICES']:
+    elif u in ['PCS', 'S', 'BUTIR', 'PACK','BIG SIZEPICES','BOTTLE','BUAH','BUNCH','CLOVE','COUNT','EGG','EGGS','PC','PCS/TRAY','PIECE','POUCH','WHOLE','PACKET','PS','PICES','EA','EACH','HEAD','FILLET','N/A','PCE','PREPACK','TUBS','UNIT','VACUUM PACK','PAX','PC/PKT','SET','CAN','EKOR','HEAD','FAMILY PACK','PACKAGE','PK']: #New 14 May 2026 starting from BAG
         return qty, "Pcs"
+
+    elif u in ['BULK', 'CARTON','BAG','BOX']: #New 14 May 2026
+        return qty, "Carton" 
+
+    elif u in ['DOZEN','DOZ','DZ']: #New 14 May 2026
+        return qty / 12, "Pcs"
+
+    elif u in ['LBS','LB','POUND','POUNDS']: #New 14 May 2026
+        return qty * 0.4536, "Kilogram"
+
+    elif u in ['OZ','OUNCE','OUNCES']: #New 14 May 2026
+        return qty * 0.02835, "Kilogram"
+
+    elif u in ['TON','TONS','METRIC TON']: #New 14 May 2026
+        return qty * 1000, "Kilogram"
     
     elif u in ['INCHES','INCH']:
         return qty * 0.0254, "Meter"
