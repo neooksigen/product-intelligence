@@ -204,7 +204,7 @@ def standardize_quantity(quantity: str, measurement_scale: str):
         return qty, "Carton" 
 
     elif u in ['DOZEN','DOZ','DZ']: #New 14 May 2026
-        return qty / 12, "Pcs"
+        return qty * 12, "Pcs" #should multiply , not divide !!!
 
     elif u in ['LBS','LB','POUND','POUNDS']: #New 14 May 2026
         return qty * 0.4536, "Kilogram"
