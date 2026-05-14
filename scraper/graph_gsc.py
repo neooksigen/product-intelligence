@@ -209,6 +209,8 @@ you have to parse the {title} into PRODUCT NAME, QUANTITY, MEASUREMENT SCALE :
 2. quantity : QUANTITY 
 3. measurement_scale : MEASUREMENT SCALE 
 
+Repeat: do not include those example mangga madu, jeruk california, daging ayam paha etc into the variable product_name !!!
+
 Format as JSON list only.
 """
 
