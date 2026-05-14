@@ -189,7 +189,7 @@ title_processing_instructions = """ In this {title} you will find string with fo
 PRODUCT NAME QUANTITY MEASUREMENT SCALE 
 
 Example :
-Mangga madu 1 kg
+abc 1 kg
 Jeruk california 5 buah
 Daging ayam paha 1 ekor
 Rice 1 bag (750G~1KG)
@@ -199,7 +199,7 @@ Freshwater Prawns / రొయ్యలు - 50-60 Count/Kg
 Cauliflower - 1piece(800-1000gram)
 Chocolate
 
-PRODUCT NAME will be Mangga madu, Jeruk california, Daging ayam paha, Rice, Lemon Grass Leaves - 100 % Natural & Farm Fresh, Watermelon (Tarbooz), Freshwater Prawns, Cauliflower, Chocolate .
+PRODUCT NAME will be abc, Jeruk california, Daging ayam paha, Rice, Lemon Grass Leaves - 100 % Natural & Farm Fresh, Watermelon (Tarbooz), Freshwater Prawns, Cauliflower, Chocolate .
 QUANTITY will be 1, 5, 1, 1 X 0.875, 1 X 0.1, 1 X 2.75, 1 X 1, 1 X 0.9, 0 .
 MEASUREMENT SCALE will be kg, buah, ekor, kg, kg, kg, kg, kg, unknown.
 
@@ -209,7 +209,7 @@ you have to parse the {title} into PRODUCT NAME, QUANTITY, MEASUREMENT SCALE :
 2. quantity : QUANTITY 
 3. measurement_scale : MEASUREMENT SCALE 
 
-Repeat: do not include those example mangga madu, jeruk california, daging ayam paha etc into the variable product_name !!!
+Repeat: do not include those example abc, jeruk california, daging ayam paha etc into the variable product_name !!!
 
 Format as JSON list only.
 """
