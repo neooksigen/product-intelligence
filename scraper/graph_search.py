@@ -154,8 +154,8 @@ Return results ONLY as a raw JSON list, no markdown, no backticks:
 
 def search_answer_gpt(state: SearchState):
     response = client_openai.responses.create(
-        #model="gpt-5.5",
-        model="gpt-5.4-mini",
+        model="gpt-5.4", #16 may 2026: try to use more sophisticated model for web search + parsing
+        #model="gpt-5.4-mini",
         tools=[{"type":"web_search", 
                 "user_location":{"type":"approximate",
                                  "country":dummy_country_gl_mapping[dummy_country_gl_mapping['country']==safe_extract_item(state["country"])].loc[:,'gl'].values[0]}
