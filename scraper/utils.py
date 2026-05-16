@@ -71,7 +71,7 @@ def parse_price(value: str):
     try:
         return {"fin":float(value), "value_temp":value_temp}
     except:
-        return {"fin":None, "value_temp":None}
+        return {"fin":float(0), "value_temp":float(0)} #16 may 2026: in case price local is unknown, none, so return 0.0.
 
 #new def 26 apr 2026
 def safe_float(x):
@@ -504,4 +504,3 @@ def get_latest_exchange_rate():
     ])
     
     return df
-
