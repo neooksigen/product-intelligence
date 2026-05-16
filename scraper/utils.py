@@ -30,7 +30,7 @@ import re
 #21 march 2026: new function parse_price to convert price text into price float
 def parse_price(value: str):
     if not value:
-        return None
+        return {"fin": float(0), "value_temp": ""} #fixed 16 may 2026, recommended by claude.
     
     value = value.strip().lower()
     
@@ -68,10 +68,14 @@ def parse_price(value: str):
         else:
             value = value.replace('.','')
     
+    # Case 4: value is just empty string... added 16 may 2026
+    else :
+        value = 0
+    
     try:
         return {"fin":float(value), "value_temp":value_temp}
     except:
-        return {"fin":float(0), "value_temp":float(0)} #16 may 2026: in case price local is unknown, none, so return 0.0.
+        return {"fin":float(0), "value_temp":""} #16 may 2026: in case price local is unknown, none, so return 0.0.
 
 #new def 26 apr 2026
 def safe_float(x):
