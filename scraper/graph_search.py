@@ -20,6 +20,8 @@ tavily_search = TavilySearch(max_results=5, search_depth='advanced', topic='gene
                             ,country="indonesia" 
                             ,include_domain=["kompas.com","detik.com","kumparan.com","cnnindonesia.com"])
 
+from scraper.utils import safe_extract_item, normalize_url, parse_price, standardize_quantity, get_latest_exchange_rate
+
 # Node preparation
 import operator
 from typing import Annotated
@@ -28,39 +30,42 @@ from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from scraper.utils import safe_extract_item, normalize_url, parse_price, standardize_quantity, get_latest_exchange_rate #added 23 march 2026
+#new 16 May 2026: we will use seriously web_search tool in openai. Previously it is chatopenai, and chatopenai is using training data (=limited cutoff), perhaps it doesn't do web search..
+from openai import OpenAI
+import pandas as pd
+import json
 
-import pandas as pd #added 23 march 2026
-import numpy as np #added 23 march 2026
+client_openai = OpenAI()
 
-class SearchAnswers(BaseModel):
-    answer: list[str] = Field(description= "Concise 5-10 words answer")
-    url: list[str] = Field(description= "Source URL")
-    source_published_date: list[str] = Field(description= "The published date/last update date of the source")    
+dummy_country_gl_mapping = pd.DataFrame({
+    "country": ["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
+    "Iraq","Russia","Japan","China","India","Thailand","Indonesia","Singapore","Australia","New Zealand"],
+    "gl": ["US", "BR", "AR", "CL", "GB", "FR", "DE", "DZ", "TZ", "ZA", "SA", 
+    "IQ", "RU", "JP", "CN", "IN", "TH", "ID", "SG", "AU", "NZ"]
+}) 
 
 class SearchState(TypedDict):
-    answer_final: Annotated[list[str], operator.add] #Answer final
-    answer: Annotated[list[str], operator.add] #Answers combined
-    answer_tavily_original: Annotated[list[str], operator.add] #Answers from Tavily original
-    answer_tavily: Annotated[list[str], operator.add] #Answers from Tavily, after summarised
-    answer_gpt: Annotated[list[str], operator.add] #Answers from GPT
     question: str #questions
     country: str #country, 23 mar 2026
-    url_final: Annotated[list[str], operator.add] #URL final
-    url: Annotated[list[str], operator.add] #Url/Answer's source combined
-    url_tavily_original: Annotated[list[str], operator.add] #Url/Answer's source from Tavily original
-    url_tavily: Annotated[list[str], operator.add] #Url/Answer's source from Tavily, just the same as url_tavily_original
-    url_gpt: Annotated[list[str], operator.add] #Url/Answer's source from GPT 
-    source_date_final: Annotated[list[str], operator.add] #The source published date/last updated date final
-    source_date: Annotated[list[str], operator.add] #The source's published date/last updated date combined 
-    source_published_date_gpt : Annotated[list[str], operator.add] #The source's published date/last updated date from GPT
-    source_published_date_tavily : Annotated[list[str], operator.add] #The source's published date/last updated date from Tavily
+    product_name_gpt: Annotated[list[str], operator.add]  #The product name from gpt open ai
+    quantity_gpt: Annotated[list[str], operator.add]  #The quantity from gpt open ai 
+    measurement_scale_gpt: Annotated[list[str], operator.add] #The measurement scale from gpt open ai 
+    price_gpt: Annotated[list[str], operator.add]   #The price from gpt open ai
+    place_gpt: Annotated[list[str], operator.add]   #The place from gpt open ai
+    url_gpt: Annotated[list[str], operator.add]   #The url source from gpt open ai
+    source_date_gpt: Annotated[list[str], operator.add]   #The source publish date from gpt open ai
+    country_per_product_gpt: Annotated[list[str], operator.add]    #The country per product
+    search_date_gpt: Annotated[list[str], operator.add]     #When web search by gpt open ai conducted
+    answer_gpt: Annotated[list[str], operator.add]      #Raw web search result by gpt open ai 
     product_name: Annotated[list[str], operator.add] #The product name
     price: Annotated[list[str], operator.add] #The product price
     quantity: Annotated[list[str], operator.add] #The product minimum quantity to be purchased
     measurement_scale: Annotated[list[str], operator.add] #The quantity scale
     place: Annotated[list[str], operator.add] #Where the product information is reported
-    extract_date: Annotated[list[str], operator.add] #When the extraction is conducted
+    answer_final: Annotated[list[str], operator.add] #Raw web search result
+    url_final: Annotated[list[str], operator.add] #Source urls
+    source_date_final: Annotated[list[str], operator.add] #Source publish date
+    extract_date: Annotated[list[str], operator.add] #When the web search is conducted
     country_per_product: Annotated[list[str], operator.add] #added 23 march 2026
     product_name_en: Annotated[list[str], operator.add] #added 20 mar 2026
     measurement_scale_standardized: Annotated[list[str], operator.add] #added 20 mar 2026
@@ -76,37 +81,11 @@ class SearchState(TypedDict):
     product_category: Annotated[list[str], operator.add] #added 20 mar 2026      
     #sections: list #Final key we duplicate in outer state for Send() API
 
-#GPT search is not compatible with date range start_date and end_date ! 
-#If you put start_date and end_date, GPT search result will be "sorry I cannot search the web".
-#Better you filter out the result just in the end.
-#30 march 2026: edit the instruction to report price in single value (not range x - y) to ensure parse_price working !
-search_instructions_gpt = """ Search the web for {search_query} to generate 8 concise results. 
-For each result:
-1. answer : Concise answer (5-10 words). Answer is containing product name, price per quantity, in where. For price, report the single price value. 
-When you find multiple price value, do average to get just single value. 
-Do not report range price x - y ! For example: "Egg cost Rp 27,000 per kg in Bandung Indonesia". 
-2. url : Source URL 
-3. source_published_date : The published date/ last updated date of the source, in format yyyy-mm-dd.
 
-Format as JSON list only.
-"""
-#Past additional prompt :
-#Example: 
-#- answer: "Eggs Rp 100 - Rp 150 per kg Jakarta", url: put source URL here
-#- answer: "Market price Rp 28,000 per kg", url: put source URL here
-
+#16 may 2026: we will keep tavily search code , and it is turned off.    
 search_instructions_tavily = """Generate answer from the user's questions: {search_query}. 
 And include also the source's published date in format yyyy-mm-dd.
 """
-
-def search_answer_gpt(state: SearchState):
-    prompt = search_instructions_gpt.format(search_query=state['question'])
-    response = llm.with_structured_output(SearchAnswers).invoke(prompt)
-    #response_01 = response.answer
-    #response_02 = [result for result in response_01[0]['search_answer']['answer']]
-    return {"answer_gpt": response.answer or "No results found.",
-           "url_gpt": response.url or "No results found.",
-           "source_published_date_gpt": response.source_published_date or "No results found."}
 
 def search_answer_tavily(state: SearchState):
     prompt = search_instructions_tavily.format(search_query=state['question'])  
@@ -115,7 +94,7 @@ def search_answer_tavily(state: SearchState):
     data = tavily_search.invoke({"query": prompt}) #It is not possible to use with_structured_output because tavily_search actually doesn't have with_structured_output attribute.
     #results = data.get("results",data)
     #results = data.get("results",[])
-    results = data["results"] #use this 7 mar 2026, perhaps update new in tavily 
+    results = data['results'] #use this 7 mar 2026, perhaps update new in tavily 
     results_content_01 = [r['content'] for r in results]
     results_content_02 = results_content_01
     #url = [r['url'] for r in results if 'url' in r] 
@@ -162,74 +141,69 @@ def search_answer_tavily_summarise(state: SearchState):
            "url_tavily": state['url_tavily_original'],
            "source_published_date_tavily": source_dates}
 
-def search_answer_combined(state: SearchState):
-    return {"answer": state['answer_gpt'], #+state['answer_tavily'], #11 mar 2026 due to not good result, tavily is set off.
-           "url": state['url_gpt'], #+state['url_tavily'],
-           "source_date": state['source_published_date_gpt'] #+state['source_published_date_tavily']
-           }
 
-from scraper.utils import safe_extract_item 
+search_instructions_gpt = """ Search the web for {search_query} to generate 8 concise results. 
+For each result, it contains product name, price per quantity (1, 2, 3 etc.) under certain measurement scale (kg, liter etc.), in where, url, the published date/last updated date of the source in format yyyy-mm-dd. 
+For price per quantity, report the single price value. When you find multiple price value, do average to get just single value. Do not report price in range x - y ! 
+If you don't find the result from web search, just simply tell "we don't find the result".
 
-class SearchAnswersParsed(BaseModel):
-    product_name: list[str] = Field(description="Product name.")
-    price: list[str] = Field(description="Product price preceeded by money currency such as Rp, $, etc.")
-    quantity: list[str] = Field(description="Minimum quantity of product to be purchased.")
-    measurement_scale: list[str] = Field(description="The quantity scale such as gr, kg, bungkus, etc.")
-    place: list[str] = Field(description="The place where the product information is reported.")
-
-search_answer_parsed_instructions = """In this {answer_detail}, you will find string with the format:
-
-PRODUCT NAME PRICE QUANTITY MEASUREMENT SCALE PLACE
-
-Example:
-Apel Malang Rp 25.000/kg di Jakarta (Harga Spesial)
-Alpukat Rp 5.750/100gr di Surabaya
-Madu Rp 40.000/500 ml di Bandung
-
-PRODUCT NAME will be Apel Malang, Apel Fuji .
-PRICE will be Rp 25.000, Rp 5.750, Rp 40.000. 
-QUANTITY will be 1, 100, 500 .
-MEASUREMENT SCALE will be kg, gr, ml .
-PLACE will be Jakarta, Surabaya, Bandung .
-
-Following example above (but please do not include the example into these product_name, quantity, measurement_scale, price, place variables below !),
-you have to parse the {answer_detail} into PRODUCT NAME, PRICE, QUANTITY, MEASUREMENT SCALE, PLACE: 
-1. product_name : PRODUCT NAME
-2. price : PRICE
-3. quantity: QUANTITY
-4. measurement_scale: MEASUREMENT SCALE
-5. place: PLACE
-
-Format as JSON list only.
+Return results ONLY as a raw JSON list, no markdown, no backticks:
+[{{"product_name": "", "quantity": "", "measurement_scale": "", "price": "", "place": "", "url": "", "date": ""}}]
 """
 
-def search_answer_parsed(state: SearchState):
-    product_name_list = []
-    price_list = []
-    quantity_list = []
-    measurement_scale_list = []
-    place_list = []
-    extract_date_list = []
-    country_per_product_list = [] #added 23 march 2026
 
-    for answer_detail in state['answer']:
-        prompt = search_answer_parsed_instructions.format(answer_detail=answer_detail)
-        response = llm_alt.with_structured_output(SearchAnswersParsed).invoke(prompt) #edited 11 mar 2026 to use cheaper model
-        product_name_list.append(safe_extract_item(response.product_name))
-        price_list.append(safe_extract_item(response.price))
-        quantity_list.append(safe_extract_item(response.quantity))
-        measurement_scale_list.append(safe_extract_item(response.measurement_scale))
-        place_list.append(safe_extract_item(response.place))
-        extract_date_list.append(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M'))
-        country_per_product_list.append(state['country']) #added 23 march 2026
+def search_answer_gpt(state: SearchState):
+    response = client_openai.responses.create(
+        #model="gpt-5.5",
+        model="gpt-5.4-mini",
+        tools=[{"type":"web_search", 
+                "user_location":{"type":"approximate",
+                                 "country":dummy_country_gl_mapping[dummy_country_gl_mapping['country']==safe_extract_item(state["country"])].loc[:,'gl'].values[0]}
+               }],  
+        tool_choice="required",
+        input=search_instructions_gpt.format(search_query=state['question'])
+    )
+    response_01 = json.loads(response.output_text)
+    
+    product_name_gpt = []
+    quantity_gpt = []
+    measurement_scale_gpt = []
+    price_gpt = []
+    place_gpt = []
+    url_gpt = []
+    source_date_gpt = []
+    country_per_product_gpt = []
+    search_date_gpt = []
+    answer_gpt = []
+    for item in response_01:
+        product_name_gpt.append(item.get('product_name'))
+        quantity_gpt.append(item.get('quantity'))
+        measurement_scale_gpt.append(item.get('measurement_scale'))
+        price_gpt.append(item.get('price'))
+        place_gpt.append(item.get('place'))
+        url_gpt.append(item.get('url'))
+        source_date_gpt.append(item.get('date'))
+        country_per_product_gpt.append(state['country'])
+        search_date_gpt.append(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M'))
+        answer_gpt.append(json.dumps(item)) #convert dict into long string instantly
+        
+    return {"product_name_gpt": product_name_gpt, "quantity_gpt": quantity_gpt, "measurement_scale_gpt": measurement_scale_gpt,
+           "price_gpt": price_gpt, "place_gpt": place_gpt, "url_gpt": url_gpt, "source_date_gpt": source_date_gpt, 
+           "country_per_product_gpt": country_per_product_gpt, "search_date_gpt": search_date_gpt, "answer_gpt": answer_gpt}
 
-    return {"product_name": product_name_list, "price": price_list, "quantity": quantity_list, "measurement_scale": measurement_scale_list,
-           "place": place_list, 
-           "answer_final": state['answer'],
-           "url_final": state['url'],
-           "source_date_final": state['source_date'],
-           "extract_date": extract_date_list,
-           "country_per_product": country_per_product_list}
+#16 may 2026: now the source is only gpt/open ai (cost restriction). Next perhaps we add source from gemini and claude.
+def search_answer_combined(state: SearchState):
+    return {"product_name": state['product_name_gpt'],
+            "price": state['price_gpt'],            
+            "quantity": state['quantity_gpt'],
+            "measurement_scale": state['measurement_scale_gpt'],
+            "place": state['place_gpt'],
+            "answer_final": state['answer_gpt'],
+            "url_final": state['url_gpt'],
+            "source_date_final": state['source_date_gpt'],
+            "extract_date": state['search_date_gpt'],
+            "country_per_product": state['country_per_product_gpt']
+           }
 
 #new 23 march 2026: translate - categorize - standardize - price conversion, similar to graph_extract
 translate_instructions = """ 
@@ -440,7 +414,6 @@ graph_search = StateGraph(SearchState)
 graph_search.add_node("search_answer_gpt", search_answer_gpt)
 #graph_search.add_node("search_answer_tavily_summarise", search_answer_tavily_summarise) 
 graph_search.add_node("search_answer_combined", search_answer_combined)
-graph_search.add_node("search_answer_parsed", search_answer_parsed)
 graph_search.add_node("next_translate", next_translate)
 graph_search.add_node("next_productcategorization", next_productcategorization)
 graph_search.add_node("next_quantity_standardize", next_quantity_standardize)
@@ -451,8 +424,7 @@ graph_search.add_edge(START, "search_answer_gpt")
 #graph_search.add_edge("search_answer_tavily", "search_answer_tavily_summarise")
 #graph_search.add_edge(["search_answer_tavily_summarise", "search_answer_gpt"], "search_answer_combined")
 graph_search.add_edge("search_answer_gpt","search_answer_combined")
-graph_search.add_edge("search_answer_combined", "search_answer_parsed")
-graph_search.add_edge("search_answer_parsed","next_translate")
+graph_search.add_edge("search_answer_combined", "next_translate")
 graph_search.add_edge("next_translate","next_productcategorization")
 graph_search.add_edge("next_productcategorization", "next_quantity_standardize")
 graph_search.add_edge("next_quantity_standardize", "next_price_currency_conversion")
