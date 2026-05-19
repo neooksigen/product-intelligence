@@ -67,15 +67,7 @@ def parse_price(value: str):
             value = value.replace('.', '.')
         else:
             value = value.replace('.','')
-    
-    # Case 4: if value is only digits without . and , (cases in argentina)
-    elif '.' not in value and ',' not in value:
-        value = float(value)
-    
-    # Case last: value is just empty string... added 16 may 2026
-    else :
-        value = 0
-    
+        
     try:
         return {"fin":float(value), "value_temp":value_temp}
     except:
