@@ -68,7 +68,11 @@ def parse_price(value: str):
         else:
             value = value.replace('.','')
     
-    # Case 4: value is just empty string... added 16 may 2026
+    # Case 4: if value is only digits without . and , (cases in argentina)
+    elif '.' not in value and ',' not in value:
+        value = float(value)
+    
+    # Case last: value is just empty string... added 16 may 2026
     else :
         value = 0
     
@@ -201,10 +205,10 @@ def standardize_quantity(quantity: str, measurement_scale: str):
     elif u in ['M', 'METER']:
         return qty, "Meter"
 
-    elif u in ['PCS', 'S', 'BUTIR', 'PACK','BIG SIZEPICES','BOTTLE','BUAH','BUNCH','CLOVE','COUNT','EGG','EGGS','PC','PCS/TRAY','PIECE','POUCH','WHOLE','PACKET','PS','PICES','EA','EACH','HEAD','FILLET','N/A','PCE','PREPACK','TUBS','UNIT','VACUUM PACK','PAX','PC/PKT','SET','CAN','EKOR','HEAD','FAMILY PACK','PACKAGE','PK']: #New 14 May 2026 starting from BAG
+    elif u in ['PCS', 'S', 'BUTIR', 'PACK','BIG SIZEPICES','BOTTLE','BUAH','BUNCH','CLOVE','COUNT','EGG','EGGS','PC','PCS/TRAY','PIECE','POUCH','WHOLE','PACKET','PS','PICES','EA','EACH','HEAD','FILLET','N/A','PCE','PREPACK','TUBS','UNIT','VACUUM PACK','PAX','PC/PKT','SET','CAN','EKOR','HEAD','FAMILY PACK','PACKAGE','PK','U','UD','UN','CT','QT','BOWL','PER ORDER','TRAYS','FRUITS','FRUIT']: #New 14 May 2026 starting from BAG, 19 May 2026 starting from U
         return qty, "Pcs"
 
-    elif u in ['BULK', 'CARTON','BAG','BOX']: #New 14 May 2026
+    elif u in ['BULK', 'CARTON','BAG','BOX','# BAG']: #New 14 May 2026
         return qty, "Carton" 
 
     elif u in ['DOZEN','DOZ','DZ']: #New 14 May 2026
