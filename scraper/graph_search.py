@@ -143,7 +143,11 @@ def search_answer_tavily_summarise(state: SearchState):
 
 
 search_instructions_gpt = """ Search the web for {search_query} to generate 8 concise results. 
-For each result, it contains product name, price in {country} local currency (example: SAR 15.50, DZD 130, ¥10.54, $3.99, etc.) per quantity (example: 1, 2, 3, 900, 1000, 0.45, etc.) under certain measurement scale (example: kg, liter, gram, mililiter, pcs, etc.), in where, url, the published date/last updated date of the source in format yyyy-mm-dd. 
+For each result, it contains product name, 
+price in {country} local currency (United States: USD, Brazil: BRL, Argentina: ARS, Chile: CLP, United Kingdom: GBP, France: EUR, Germany: EUR, Algeria: DZD, Tanzania: TZS, South Africa: ZAR, Saudi Arabia: SAR, Iraq: IQD, Russia: RUB, Japan: JPY, China: CNY, India: INR, Thailand: THB, Indonesia: IDR, Singapore: SGD, Australia: AUD, New Zealand: NZD) per quantity (example: 1, 2, 3, 900, 1000, 0.45, etc.) under certain measurement scale (example: kg, liter, gram, mililiter, pcs, etc.), 
+in where, 
+url, 
+the published date/last updated date of the source in format yyyy-mm-dd . 
 For price per quantity, report the single price value. When you find multiple price value, do average to get just single value. Do not report price in range x - y ! 
 If you don't find the result from web search, just simply tell "we don't find the result".
 
@@ -151,6 +155,11 @@ Return results ONLY as a raw JSON list, no markdown, no backticks:
 [{{"product_name": "", "quantity": "", "measurement_scale": "", "price": "", "place": "", "url": "", "date": ""}}]
 """
 
+    dummy_country_fbc_mapping = pd.DataFrame({
+        "country":["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
+        "Iraq","Russia","Japan","China","India","Thailand","Indonesia","Singapore","Australia","New Zealand"],
+        "from_base_code":['USD','BRL','ARS', 'CLP', 'GBP', 'EUR','EUR', 'DZD', 'TZS', 'ZAR', 'SAR', 
+        'IQD', 'RUB', 'JPY', 'CNY', 'INR', 'THB', 'IDR', 'SGD', 'AUD', 'NZD']
 
 def search_answer_gpt(state: SearchState):
     response = client_openai.responses.create(
