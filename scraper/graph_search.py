@@ -155,12 +155,6 @@ Return results ONLY as a raw JSON list, no markdown, no backticks:
 [{{"product_name": "", "quantity": "", "measurement_scale": "", "price": "", "place": "", "url": "", "date": ""}}]
 """
 
-    dummy_country_fbc_mapping = pd.DataFrame({
-        "country":["United States", "Brazil", "Argentina", "Chile", "United Kingdom", "France", "Germany", "Algeria", "Tanzania", "South Africa", "Saudi Arabia",
-        "Iraq","Russia","Japan","China","India","Thailand","Indonesia","Singapore","Australia","New Zealand"],
-        "from_base_code":['USD','BRL','ARS', 'CLP', 'GBP', 'EUR','EUR', 'DZD', 'TZS', 'ZAR', 'SAR', 
-        'IQD', 'RUB', 'JPY', 'CNY', 'INR', 'THB', 'IDR', 'SGD', 'AUD', 'NZD']
-
 def search_answer_gpt(state: SearchState):
     response = client_openai.responses.create(
         model="gpt-5.4", #16 may 2026: try to use more sophisticated model for web search + parsing
