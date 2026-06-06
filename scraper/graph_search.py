@@ -143,7 +143,7 @@ def search_answer_tavily_summarise(state: SearchState):
 
 
 search_instructions_gpt = """ Search the web for {search_query} to generate 8 concise results. 
-For each result, it contains product name, price (example: SAR 15.50, $3.99, etc.) per quantity (example: 1, 2, 3, 900, 1000, 0.45, etc.) under certain measurement scale (example: kg, liter, gram, mililiter, pcs, etc.), in where, url, the published date/last updated date of the source in format yyyy-mm-dd. 
+For each result, it contains product name, price in {country} local currency (example: SAR 15.50, DZD 130, ¥10.54, $3.99, etc.) per quantity (example: 1, 2, 3, 900, 1000, 0.45, etc.) under certain measurement scale (example: kg, liter, gram, mililiter, pcs, etc.), in where, url, the published date/last updated date of the source in format yyyy-mm-dd. 
 For price per quantity, report the single price value. When you find multiple price value, do average to get just single value. Do not report price in range x - y ! 
 If you don't find the result from web search, just simply tell "we don't find the result".
 
@@ -161,7 +161,7 @@ def search_answer_gpt(state: SearchState):
                                  "country":dummy_country_gl_mapping[dummy_country_gl_mapping['country']==safe_extract_item(state["country"])].loc[:,'gl'].values[0]}
                }],  
         tool_choice="required",
-        input=search_instructions_gpt.format(search_query=state['question'])
+        input=search_instructions_gpt.format(search_query=state['question'],country=state['country'])
     )
     response_01 = json.loads(response.output_text)
     
