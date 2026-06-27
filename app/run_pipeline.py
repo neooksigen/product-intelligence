@@ -21,9 +21,9 @@ from scraper.utils import get_latest_exchange_rate, rates_to_dataframe, rates_to
 
 INTERVAL_SECONDS = 20 * 60  # 20 minutes 24 mar 2026 changed from 40 to 20 minutes
 #4 April 2026: specify for graph_search, graph_extract, graph_gsc
-INTERVAL_SECONDS_SEARCH = 80 * 60 #updated 24 may 2026 to reduce graph_search daily cost
-INTERVAL_SECONDS_EXTRACT = 50 * 60
-INTERVAL_SECONDS_GSC = 50 * 60
+INTERVAL_SECONDS_SEARCH = 180 * 60 #updated 24 may 2026 to reduce graph_search daily cost, updated on 27 jun 2026 from 80 mins to be 180 mins or 3 hours to reduce more cost
+INTERVAL_SECONDS_EXTRACT = 180 * 60
+INTERVAL_SECONDS_GSC = 180 * 60
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
