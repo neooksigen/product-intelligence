@@ -3,6 +3,7 @@
 [Maintelyd](https://maintelyd.com)'s Global Product Price Discoveries codebase are 2 :
 1. repo [product-intelligence](https://github.com/neooksigen/product-intelligence) : agentic workflow and automation pipeline. This is to build and refresh Maintelyd database.
 2. repo [product-intelligence-frontend](https://github.com/neooksigen/product-intelligence-frontend) : front end website and front end agent. This is to visualize the data from Maintelyd database, and deploy front end agent where user could ask custom product price analysis to Maintelyd database.
+Both repo 1 and repo 2 will be described together in this README product-intelligence.
 
 ## Product Price Discoveries Components
 ### 1. Agentic Workflow
@@ -92,7 +93,7 @@ I also discover "**incremental knowledge agent**". Because our front end agent i
 Although unfortunately I could not continue utilizing GPT-5.6 due to daily cost constraint (this Maintelyd automation is already running every day since March 2026) , **our Maintelyd project is fully powered by OpenAI**. The agentic workflows, automation pipeline, frontend website were developed by ChatGPT. The website UI enhancement and front end agent were developed by Codex during this OpenAI Build Week Submission Period. And models inside agentic workflows and inside front end agent are 100 % OpenAI (GPT-5.4 and GPT-5-mini). No gemini, claude, deepseek etc models inside this Maintelyd project. **I don't want to lie that I utilize GPT-5.6 in the demo video**, so this explanation is very important ground truth.
 
 ## How to Test
-Go to Maintelyd's Global Product Price Comparison website https://maintelyd.com and try out these 7 pages one-by-one (accessible also in menu bar on top right) in desktop and/or mobile browser : 
+Go to Maintelyd's Global Product Price Discoveries website https://maintelyd.com and try out these 7 pages one-by-one (accessible also in menu bar on top right) in desktop and/or mobile browser : 
 1. [Daily Price Comparison](https://maintelyd.com/daily-chart)
 2. [Monthly Price Comparison](https://maintelyd.com/monthly-chart)
 3. [Daily Price Comparison - Table](https://maintelyd.com/daily-table)
