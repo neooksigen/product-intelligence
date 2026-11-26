@@ -17,7 +17,7 @@ from scraper.utils import safe_extract_item, normalize_url, parse_price, standar
 
 from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="gpt-5.2", temperature=0) 
-llm_alt = ChatOpenAI(model="gpt-6.1-terra", temperature=0) #11 march 2026: for summarization and parsing #26 nov 2026 gpt-5-mini changed to gpt-6.1-terra due do 11 dec 2026 deprecation
+llm_alt = ChatOpenAI(model="gpt-6.1-terra") #11 march 2026: for summarization and parsing #26 nov 2026 gpt-5-mini changed to gpt-6.1-terra due do 11 dec 2026 deprecation, removed temperature also not supported anymore.
 
 import datetime
 end_date = datetime.datetime.now().date().strftime('%Y-%m-%d')
