@@ -22,7 +22,7 @@ import numpy as np #added 24 march 2026
 
 from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="gpt-5.2", temperature=0, model_kwargs={"response_format": {"type": "json_object"}})
-llm_alt = ChatOpenAI(model="gpt-5-mini", temperature=0, model_kwargs={"response_format": {"type": "json_object"}}) #11 march 2026: for summarization and parsing #26 march 2026: model tune up to further reduce output token cost
+llm_alt = ChatOpenAI(model="gpt-6.1-terra", temperature=0, model_kwargs={"response_format": {"type": "json_object"}}) #11 march 2026: for summarization and parsing #26 march 2026: model tune up to further reduce output token cost #26 nov 2026: changed from gpt-5-mini to gpt-6.1-terra to avoid deprecation 11 dec 2026 later
 
 import datetime
 end_date = datetime.datetime.now().date().strftime('%Y-%m-%d')
